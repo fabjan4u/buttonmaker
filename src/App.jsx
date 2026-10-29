@@ -8,7 +8,7 @@ import { BUTTON_TEMPLATES, PAPER_FORMATS } from './constants/templates';
 import { calculateSheetGrid, generatePrintPdf } from './utils/pdfGenerator';
 
 export default function App() {
-  const [template, setTemplate] = useState(BUTTON_TEMPLATES[1]); // 32mm VEVOR default as user requested!
+  const [template, setTemplate] = useState(BUTTON_TEMPLATES[0]); // 32mm VEVOR JM-32 default
   const [paper, setPaper] = useState(PAPER_FORMATS[0]); // A4
   const [uploadedImages, setUploadedImages] = useState([]);
   const [editingSlotIndex, setEditingSlotIndex] = useState(null);
@@ -59,7 +59,7 @@ export default function App() {
         },
         {
           id: 't-2',
-          text: `${tmpl.faceDiameterMm}MM VEVOR`,
+          text: tmpl.id === '32mm' ? '32MM JM-32' : tmpl.id === '58mm' ? '58MM JM-58' : `${tmpl.faceDiameterMm}MM VEVOR`,
           style: 'straight',
           fontFamily: "'Bebas Neue', cursive",
           fontSize: is32 ? 28 : 44,
@@ -99,7 +99,7 @@ export default function App() {
   // Badges array: one entry per slot on the current sheet(s)
   const [badges, setBadges] = useState(() => {
     const initial = Array(slotsPerPage).fill(null);
-    initial[0] = createSampleBadge(BUTTON_TEMPLATES[1]);
+    initial[0] = createSampleBadge(BUTTON_TEMPLATES[0]);
     return initial;
   });
 

@@ -1,36 +1,36 @@
 export const BUTTON_TEMPLATES = [
   {
-    id: '58mm',
-    name: '58 mm (VEVOR 2.25")',
-    category: 'metric',
-    popular: true,
-    faceDiameterMm: 58.0,
-    cutDiameterMm: 70.0,
-    bleedMm: 6.0,
-    press: 'VEVOR 58mm Button Maker (Cirkelsnijder / Stansmaat: 70 mm)',
-    description: 'De populairste VEVOR buttonmaat. 58mm zichtbaar, 70mm snijden.'
-  },
-  {
     id: '32mm',
-    name: '32 mm (VEVOR 1.25")',
+    name: '32 mm (VEVOR JM-32 / 1.25")',
     category: 'metric',
     popular: true,
     faceDiameterMm: 32.0,
     cutDiameterMm: 44.0,
     bleedMm: 6.0,
-    press: 'VEVOR 32mm Button Maker (Cirkelsnijder / Stansmaat: 44 mm)',
-    description: 'Exact afgestemd op de VEVOR 32mm stans (44mm papiermaat).'
+    press: 'VEVOR JM-32 Button Maker (Stansmaat / Cirkelsnijder: 44 mm)',
+    description: 'Exact afgestemd op de VEVOR JM-32 stans (44mm papiermaat, 32mm zichtbaar).'
+  },
+  {
+    id: '58mm',
+    name: '58 mm (VEVOR JM-58 / 2.25")',
+    category: 'metric',
+    popular: true,
+    faceDiameterMm: 58.0,
+    cutDiameterMm: 70.0,
+    bleedMm: 6.0,
+    press: 'VEVOR JM-58 Button Maker (Stansmaat / Cirkelsnijder: 70 mm)',
+    description: 'Exact afgestemd op de VEVOR JM-58 stans (70mm papiermaat, 58mm zichtbaar).'
   },
   {
     id: '75mm',
-    name: '75 mm (VEVOR 3")',
+    name: '75 mm (VEVOR JM-75 / 3")',
     category: 'metric',
     popular: true,
     faceDiameterMm: 75.0,
     cutDiameterMm: 86.0,
     bleedMm: 5.5,
-    press: 'VEVOR 75mm Button Maker (Cirkelsnijder / Stansmaat: 86 mm)',
-    description: 'Grote VEVOR badge. 75mm zichtbaar, 86mm snijden.'
+    press: 'VEVOR JM-75 Button Maker (Stansmaat / Cirkelsnijder: 86 mm)',
+    description: 'Exact afgestemd op de VEVOR JM-75 stans (86mm papiermaat, 75mm zichtbaar).'
   },
   {
     id: '25mm',
