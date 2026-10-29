@@ -52,6 +52,7 @@ input[type="range"] {
   border-radius: 50%;
   outline: 2px dashed #10b981;
   outline-color: #10b981;
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.7);
 }
 
 .badge-cropper-wrapper.crop-mode-bleed .cropper-view-box {
@@ -62,6 +63,12 @@ input[type="range"] {
 .badge-cropper-wrapper .cropper-face {
   border-radius: 50%;
   background-color: transparent;
+}
+
+/* Hide all crop box resize handles & lines so the pin stays fixed and only the image is resized! */
+.badge-cropper-wrapper .cropper-point,
+.badge-cropper-wrapper .cropper-line {
+  display: none !important;
 }
 
 /* Inner Face Guide Ring on Cropper (only shown when in bleed mode) */
@@ -76,6 +83,5 @@ input[type="range"] {
   border-radius: 50%;
   border: 2px dashed #10b981;
   pointer-events: none;
-  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.25);
 }
 
