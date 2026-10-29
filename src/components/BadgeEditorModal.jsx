@@ -7,14 +7,16 @@ import {
   RotateCw, 
   FlipHorizontal, 
   FlipVertical, 
-  Sliders, 
   Trash2, 
   Plus, 
   ZoomIn, 
   ZoomOut, 
   Sparkles, 
   Check, 
-  Copy 
+  Copy,
+  Upload,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { renderButtonCanvas } from '../utils/canvasRenderer';
 import { BadgeMockup } from './BadgeMockup';
@@ -34,6 +36,7 @@ export function BadgeEditorModal({
   const [localBadge, setLocalBadge] = useState({ ...badgeState });
   const [activeTab, setActiveTab] = useState('text'); // 'text', 'image', 'background'
   const canvasRef = useRef(null);
+  const replaceFileInputRef = useRef(null);
 
   // Mouse dragging state for canvas
   const [isDragging, setIsDragging] = useState(false);
@@ -50,7 +53,7 @@ export function BadgeEditorModal({
     if (!canvasRef.current) return;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const size = 600;
+    const size = 640;
     canvas.width = size;
     canvas.height = size;
 
@@ -67,7 +70,7 @@ export function BadgeEditorModal({
     });
   }, [localBadge, template]);
 
-  // Canvas Mouse Interactions
+  // Canvas Mouse Dragging Interactions
   const handleMouseDown = (e) => {
     if (!localBadge.image) return;
     setIsDragging(true);
@@ -81,7 +84,7 @@ export function BadgeEditorModal({
     const dy = e.clientY - dragStart.y;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const scaleFactor = 600 / canvas.clientWidth;
+    const scaleFactor = 640 / canvas.clientWidth;
 
     setLocalBadge(prev => ({
       ...prev,
@@ -110,14 +113,77 @@ export function BadgeEditorModal({
     }));
   };
 
+  // Quick Image Sizing Helpers
+  const handleFitToFace = () => {
+    if (!localBadge.image) return;
+    const img = localBadge.image;
+    const size = 640;
+    const cutRadius = (size / 2) * 0.94;
+    const faceRadius = cutRadius * (template.faceDiameterMm / template.cutDiameterMm);
+    const targetDiam = faceRadius * 2;
+    const scale = targetDiam / Math.max(img.naturalWidth, img.naturalHeight);
+
+    setLocalBadge(prev => ({
+      ...prev,
+      imageProps: { ...prev.imageProps, x: 0, y: 0, scale: Number(scale.toFixed(2)) }
+    }));
+  };
+
+  const handleFillCutCircle = () => {
+    if (!localBadge.image) return;
+    const img = localBadge.image;
+    const size = 640;
+    const cutRadius = (size / 2) * 0.94;
+    const targetDiam = cutRadius * 2;
+    const scale = targetDiam / Math.min(img.naturalWidth, img.naturalHeight);
+
+    setLocalBadge(prev => ({
+      ...prev,
+      imageProps: { ...prev.imageProps, x: 0, y: 0, scale: Number(scale.toFixed(2)) }
+    }));
+  };
+
+  // Replace image handler
+  const handleReplaceImage = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 640;
+        const cutRadius = (size / 2) * 0.94;
+        const targetDiam = cutRadius * 2;
+        const scale = targetDiam / Math.min(img.naturalWidth, img.naturalHeight);
+
+        setLocalBadge(prev => ({
+          ...prev,
+          image: img,
+          name: file.name.replace(/\.[^/.]+$/, '').slice(0, 18),
+          imageProps: {
+            ...prev.imageProps,
+            x: 0,
+            y: 0,
+            scale: Number(scale.toFixed(2)),
+            rotation: 0
+          }
+        }));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Text layer handlers
   const handleAddTextLayer = (style = 'straight') => {
+    // Determine sensible default font size based on template (smaller buttons get smaller default text)
+    const baseFontSize = template.faceDiameterMm <= 32 ? 22 : 32;
+
     const newLayer = {
       id: Date.now().toString(),
       text: style === 'curved-top' ? 'BOVENSTE TEKST' : (style === 'curved-bottom' ? 'ONDERSTE TEKST' : 'JOUW TEKST'),
       style: style,
       fontFamily: "'Inter', sans-serif",
-      fontSize: style === 'straight' ? 36 : 28,
+      fontSize: style === 'straight' ? baseFontSize : Math.round(baseFontSize * 0.85),
       bold: true,
       italic: false,
       color: '#ffffff',
@@ -151,27 +217,32 @@ export function BadgeEditorModal({
     }));
   };
 
-  const colorPresets = [
-    '#ffffff', '#000000', '#ef4444', '#f97316', '#eab308', 
+  const quickColors = [
+    '#ffffff', '#000000', '#facc15', '#ef4444', '#f97316', 
     '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl max-h-[95vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-black/85 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl max-h-[96vh] flex flex-col shadow-2xl overflow-hidden">
         
         {/* Modal Top Bar */}
-        <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-800 bg-slate-950/60">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800 bg-slate-950/70">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-xs">
               #{slotIndex + 1}
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">
-                Button #{slotIndex + 1} Bewerken
-              </h2>
-              <p className="text-xs text-slate-400">
-                Tekst toevoegen, afbeelding schalen en positioneren
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm sm:text-base font-bold text-white">
+                  Button #{slotIndex + 1} Bewerken
+                </h2>
+                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                  {template.name}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Tekst & boogtekst bewerken, foto schalen, roteren en positioneren
               </p>
             </div>
           </div>
@@ -188,9 +259,9 @@ export function BadgeEditorModal({
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* LEFT: Live Interactive Canvas + 3D Mini Preview */}
-          <div className="lg:col-span-6 flex flex-col items-center justify-between bg-slate-950/60 rounded-2xl p-5 border border-slate-800/80">
+          <div className="lg:col-span-6 flex flex-col items-center justify-between bg-slate-950/60 rounded-2xl p-4 sm:p-5 border border-slate-800/80">
             {/* VEVOR Specific Line Guide Explanation */}
-            <div className="w-full flex items-center justify-center gap-3 text-[11px] bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800 mb-3 flex-wrap">
+            <div className="w-full flex items-center justify-center gap-2 sm:gap-3 text-[11px] bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800 mb-3 flex-wrap">
               <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
                 <span className="w-2.5 h-0.5 border-t-2 border-dashed border-emerald-400"></span>
                 🟢 Voorkant: {template.faceDiameterMm}mm
@@ -217,7 +288,7 @@ export function BadgeEditorModal({
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
                   onWheel={handleWheel}
-                  style={{ width: 'min(360px, 75vw)', height: 'min(360px, 75vw)' }}
+                  style={{ width: 'min(360px, 72vw)', height: 'min(360px, 72vw)' }}
                   className={`block rounded-full ${
                     localBadge.image ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'
                   }`}
@@ -233,7 +304,7 @@ export function BadgeEditorModal({
             </div>
 
             {/* Bottom 3D Preview Card */}
-            <div className="w-full max-w-xs mt-4">
+            <div className="w-full max-w-xs mt-3">
               <BadgeMockup badgeState={{ ...localBadge, template }} />
             </div>
           </div>
@@ -269,7 +340,7 @@ export function BadgeEditorModal({
                 }`}
               >
                 <Scissors className="w-3.5 h-3.5" />
-                <span>Afbeelding & Crop</span>
+                <span>Afbeelding & Positie</span>
               </button>
 
               <button
@@ -281,20 +352,20 @@ export function BadgeEditorModal({
                 }`}
               >
                 <Palette className="w-3.5 h-3.5" />
-                <span>Kleur</span>
+                <span>Achtergrond</span>
               </button>
             </div>
 
             {/* TAB CONTENT */}
             <div className="flex-1 overflow-y-auto max-h-[50vh] pr-1 space-y-4 text-xs">
               
-              {/* ================= TEXT TAB (THE CORE REQUEST) ================= */}
+              {/* ================= TEXT TAB (ENHANCED FOR CONVENIENCE) ================= */}
               {activeTab === 'text' && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-bold text-white mb-1">Tekst & Boogtekst toevoegen</h3>
+                    <h3 className="font-bold text-white mb-0.5">Tekst toevoegen</h3>
                     <p className="text-[11px] text-slate-400">
-                      Plaats rechte tekst of gebogen tekst langs de boven- of onderboog van de button.
+                      Kies rechte tekst of boogtekst langs de rand van de button.
                     </p>
                   </div>
 
@@ -302,19 +373,19 @@ export function BadgeEditorModal({
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => handleAddTextLayer('straight')}
-                      className="py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold text-center transition"
+                      className="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold text-center transition"
                     >
                       + Recht
                     </button>
                     <button
                       onClick={() => handleAddTextLayer('curved-top')}
-                      className="py-2 px-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-semibold text-center transition"
+                      className="py-2 px-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-semibold text-center transition"
                     >
                       + Bovenboog ⌒
                     </button>
                     <button
                       onClick={() => handleAddTextLayer('curved-bottom')}
-                      className="py-2 px-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-semibold text-center transition"
+                      className="py-2 px-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-semibold text-center transition"
                     >
                       + Onderboog ⌣
                     </button>
@@ -335,11 +406,12 @@ export function BadgeEditorModal({
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-bold text-emerald-400">
-                              Laag #{index + 1}: {layer.style === 'curved-top' ? 'Bovenboog ⌒' : layer.style === 'curved-bottom' ? 'Onderboog ⌣' : 'Recht'}
+                              Laag #{index + 1}: {layer.style === 'curved-top' ? 'Bovenboog ⌒' : layer.style === 'curved-bottom' ? 'Onderboog ⌣' : 'Rechte Tekst'}
                             </span>
                             <button
                               onClick={() => deleteTextLayer(layer.id)}
                               className="text-slate-500 hover:text-rose-400 transition"
+                              title="Verwijder tekstlaag"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -350,7 +422,7 @@ export function BadgeEditorModal({
                             type="text"
                             value={layer.text}
                             onChange={e => updateTextLayer(layer.id, { text: e.target.value })}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-medium text-xs"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white font-medium text-xs focus:border-emerald-500 outline-none"
                             placeholder="Typ tekst..."
                           />
 
@@ -373,12 +445,12 @@ export function BadgeEditorModal({
                             <div>
                               <div className="flex justify-between text-[11px] text-slate-400 mb-0.5">
                                 <span>Grootte</span>
-                                <span className="font-mono">{layer.fontSize}px</span>
+                                <span className="font-mono text-emerald-400">{layer.fontSize}px</span>
                               </div>
                               <input
                                 type="range"
-                                min="12"
-                                max="90"
+                                min="10"
+                                max="80"
                                 value={layer.fontSize}
                                 onChange={e => updateTextLayer(layer.id, { fontSize: parseInt(e.target.value, 10) })}
                                 className="w-full"
@@ -388,7 +460,7 @@ export function BadgeEditorModal({
                             <div>
                               <div className="flex justify-between text-[11px] text-slate-400 mb-0.5">
                                 <span>Letterafstand</span>
-                                <span className="font-mono">{layer.letterSpacing}px</span>
+                                <span className="font-mono text-emerald-400">{layer.letterSpacing}px</span>
                               </div>
                               <input
                                 type="range"
@@ -401,41 +473,140 @@ export function BadgeEditorModal({
                             </div>
                           </div>
 
-                          {/* Color & Stroke */}
-                          <div className="grid grid-cols-2 gap-2 pt-1">
-                            <div>
-                              <label className="block text-[11px] text-slate-400 mb-1">Tekstkleur</label>
-                              <div className="flex items-center gap-2">
+                          {/* Curved text controls (Radius & Rotation) */}
+                          {(layer.style === 'curved-top' || layer.style === 'curved-bottom') && (
+                            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/80">
+                              <div>
+                                <div className="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                                  <span>Boogstraal</span>
+                                  <span className="font-mono text-emerald-400">{Math.round((layer.curveRadiusRatio || 0.78) * 100)}%</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="0.5"
+                                  max="0.95"
+                                  step="0.02"
+                                  value={layer.curveRadiusRatio || 0.78}
+                                  onChange={e => updateTextLayer(layer.id, { curveRadiusRatio: parseFloat(e.target.value) })}
+                                  className="w-full"
+                                />
+                              </div>
+
+                              <div>
+                                <div className="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                                  <span>Draaihoek</span>
+                                  <span className="font-mono text-emerald-400">{layer.rotationDeg || 0}°</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="-180"
+                                  max="180"
+                                  value={layer.rotationDeg || 0}
+                                  onChange={e => updateTextLayer(layer.id, { rotationDeg: parseInt(e.target.value, 10) })}
+                                  className="w-full"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Straight text position controls (Vertical Y position) */}
+                          {layer.style === 'straight' && (
+                            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/80">
+                              <div>
+                                <div className="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                                  <span>Verticale Positie (Y)</span>
+                                  <span className="font-mono text-emerald-400">{layer.y || 0}px</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="-180"
+                                  max="180"
+                                  value={layer.y || 0}
+                                  onChange={e => updateTextLayer(layer.id, { y: parseInt(e.target.value, 10) })}
+                                  className="w-full"
+                                />
+                              </div>
+
+                              <div>
+                                <div className="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                                  <span>Horizontale Positie (X)</span>
+                                  <span className="font-mono text-emerald-400">{layer.x || 0}px</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="-180"
+                                  max="180"
+                                  value={layer.x || 0}
+                                  onChange={e => updateTextLayer(layer.id, { x: parseInt(e.target.value, 10) })}
+                                  className="w-full"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Color & Quick Palette */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <label className="text-[11px] text-slate-400">Tekstkleur</label>
+                              <span className="font-mono text-[11px] text-slate-300">{layer.color}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <input
+                                type="color"
+                                value={layer.color}
+                                onChange={e => updateTextLayer(layer.id, { color: e.target.value })}
+                                className="w-7 h-7 rounded border border-slate-700 bg-transparent cursor-pointer"
+                              />
+                              {quickColors.map(c => (
+                                <button
+                                  key={c}
+                                  onClick={() => updateTextLayer(layer.id, { color: c })}
+                                  className="w-5 h-5 rounded-full border border-slate-600 transition hover:scale-110"
+                                  style={{ backgroundColor: c }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Stroke Outline Controls */}
+                          <div className="pt-2 border-t border-slate-800">
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="flex items-center gap-2 cursor-pointer text-slate-300 font-semibold text-[11px]">
+                                <input
+                                  type="checkbox"
+                                  checked={layer.hasStroke}
+                                  onChange={e => updateTextLayer(layer.id, { hasStroke: e.target.checked })}
+                                  className="rounded bg-slate-900 border-slate-700 text-emerald-500"
+                                />
+                                <span>Zwarte/Witte omtreklijn (Stroke)</span>
+                              </label>
+
+                              {layer.hasStroke && (
                                 <input
                                   type="color"
-                                  value={layer.color}
-                                  onChange={e => updateTextLayer(layer.id, { color: e.target.value })}
-                                  className="w-7 h-7 rounded border border-slate-700 bg-transparent cursor-pointer"
+                                  value={layer.strokeColor || '#000000'}
+                                  onChange={e => updateTextLayer(layer.id, { strokeColor: e.target.value })}
+                                  className="w-6 h-6 rounded border border-slate-700 bg-transparent cursor-pointer"
                                 />
-                                <span className="font-mono text-[11px] text-slate-300">{layer.color}</span>
-                              </div>
+                              )}
                             </div>
 
-                            <div>
-                              <label className="block text-[11px] text-slate-400 mb-1">Omtrek (Stroke)</label>
-                              <div className="flex items-center gap-2">
+                            {layer.hasStroke && (
+                              <div>
+                                <div className="flex justify-between text-[10px] text-slate-400 mb-0.5">
+                                  <span>Omtrek Dikte</span>
+                                  <span className="font-mono text-emerald-400">{layer.strokeWidth || 3}px</span>
+                                </div>
                                 <input
-                                  type="color"
-                                  value={layer.strokeColor}
-                                  onChange={e => updateTextLayer(layer.id, { strokeColor: e.target.value, hasStroke: true })}
-                                  className="w-7 h-7 rounded border border-slate-700 bg-transparent cursor-pointer"
+                                  type="range"
+                                  min="1"
+                                  max="8"
+                                  value={layer.strokeWidth || 3}
+                                  onChange={e => updateTextLayer(layer.id, { strokeWidth: parseInt(e.target.value, 10) })}
+                                  className="w-full"
                                 />
-                                <label className="flex items-center gap-1 text-[11px] text-slate-300">
-                                  <input
-                                    type="checkbox"
-                                    checked={layer.hasStroke}
-                                    onChange={e => updateTextLayer(layer.id, { hasStroke: e.target.checked })}
-                                    className="rounded bg-slate-900 border-slate-700 text-emerald-500"
-                                  />
-                                  <span>Aan</span>
-                                </label>
                               </div>
-                            </div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -444,18 +615,61 @@ export function BadgeEditorModal({
                 </div>
               )}
 
-              {/* ================= IMAGE & CROP TAB ================= */}
+              {/* ================= IMAGE & CROP TAB (ENHANCED) ================= */}
               {activeTab === 'image' && (
                 <div className="space-y-4">
+                  <input
+                    type="file"
+                    ref={replaceFileInputRef}
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => {
+                      if (e.target.files?.[0]) handleReplaceImage(e.target.files[0]);
+                    }}
+                  />
+
                   <div>
-                    <h3 className="font-bold text-white mb-1">Afbeelding & Positie</h3>
+                    <h3 className="font-bold text-white mb-0.5">Afbeelding aanpassen</h3>
                     <p className="text-[11px] text-slate-400">
-                      Zoom in/uit, roteer of spiegel de afbeelding van deze button.
+                      Snel passend maken, zoomen, roteren of vervangen.
                     </p>
                   </div>
 
                   {localBadge.image ? (
                     <div className="space-y-4">
+                      {/* Quick Fit / Fill Automation Buttons */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          onClick={handleFitToFace}
+                          className="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold flex items-center justify-center gap-1.5 transition"
+                          title="Past foto binnen de groene voorkantcirkel"
+                        >
+                          <Minimize2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Passend (Fit)</span>
+                        </button>
+
+                        <button
+                          onClick={handleFillCutCircle}
+                          className="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold flex items-center justify-center gap-1.5 transition"
+                          title="Vult de hele button inclusief aflooprand"
+                        >
+                          <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Vullend (Fill)</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setLocalBadge(prev => ({
+                              ...prev,
+                              imageProps: { ...prev.imageProps, x: 0, y: 0 }
+                            }));
+                          }}
+                          className="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold transition"
+                        >
+                          Centreer
+                        </button>
+                      </div>
+
                       {/* Scale / Zoom */}
                       <div>
                         <div className="flex justify-between mb-1 text-[11px]">
@@ -464,21 +678,45 @@ export function BadgeEditorModal({
                             {Math.round(localBadge.imageProps.scale * 100)}%
                           </span>
                         </div>
-                        <input
-                          type="range"
-                          min="0.1"
-                          max="4"
-                          step="0.05"
-                          value={localBadge.imageProps.scale}
-                          onChange={e => {
-                            const val = parseFloat(e.target.value);
-                            setLocalBadge(prev => ({
-                              ...prev,
-                              imageProps: { ...prev.imageProps, scale: val }
-                            }));
-                          }}
-                          className="w-full"
-                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setLocalBadge(prev => ({
+                                ...prev,
+                                imageProps: { ...prev.imageProps, scale: Math.max(0.1, Number((prev.imageProps.scale - 0.1).toFixed(2))) }
+                              }));
+                            }}
+                            className="p-1 rounded bg-slate-800 text-slate-300"
+                          >
+                            <ZoomOut className="w-3.5 h-3.5" />
+                          </button>
+                          <input
+                            type="range"
+                            min="0.1"
+                            max="4"
+                            step="0.05"
+                            value={localBadge.imageProps.scale}
+                            onChange={e => {
+                              const val = parseFloat(e.target.value);
+                              setLocalBadge(prev => ({
+                                ...prev,
+                                imageProps: { ...prev.imageProps, scale: val }
+                              }));
+                            }}
+                            className="flex-1"
+                          />
+                          <button
+                            onClick={() => {
+                              setLocalBadge(prev => ({
+                                ...prev,
+                                imageProps: { ...prev.imageProps, scale: Number((prev.imageProps.scale + 0.1).toFixed(2)) }
+                              }));
+                            }}
+                            className="p-1 rounded bg-slate-800 text-slate-300"
+                          >
+                            <ZoomIn className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Rotation */}
@@ -509,7 +747,7 @@ export function BadgeEditorModal({
                                 imageProps: { ...prev.imageProps, rotation: (prev.imageProps.rotation + 90) % 360 }
                               }));
                             }}
-                            className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
+                            className="p-1.5 rounded bg-slate-800 hover:bg-slate-750 text-slate-300"
                             title="+90° Draaien"
                           >
                             <RotateCw className="w-3.5 h-3.5" />
@@ -554,22 +792,35 @@ export function BadgeEditorModal({
                         </button>
                       </div>
 
-                      {/* Center Image */}
-                      <button
-                        onClick={() => {
-                          setLocalBadge(prev => ({
-                            ...prev,
-                            imageProps: { ...prev.imageProps, x: 0, y: 0 }
-                          }));
-                        }}
-                        className="w-full py-1.5 rounded-lg bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 text-xs font-semibold"
-                      >
-                        Centreer Afbeelding
-                      </button>
+                      {/* Replace / Remove Image Actions */}
+                      <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                        <button
+                          onClick={() => replaceFileInputRef.current?.click()}
+                          className="text-xs text-emerald-400 hover:underline flex items-center gap-1 font-semibold"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>Vervang deze foto...</span>
+                        </button>
+
+                        <button
+                          onClick={() => setLocalBadge(prev => ({ ...prev, image: null }))}
+                          className="text-xs text-rose-400 hover:underline flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Verwijder foto</span>
+                        </button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="p-6 text-center border border-slate-800 rounded-xl text-slate-500">
-                      Geen foto in deze slot. Sleep een foto uit de linkergalerij naar deze button.
+                    <div className="p-6 text-center border-2 border-dashed border-slate-800 rounded-xl space-y-3">
+                      <p className="text-slate-400 text-xs">Geen foto geladen in deze button.</p>
+                      <button
+                        onClick={() => replaceFileInputRef.current?.click()}
+                        className="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs inline-flex items-center gap-2 shadow-md transition"
+                      >
+                        <Upload className="w-4 h-4" />
+                        <span>Kies een foto</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -579,49 +830,76 @@ export function BadgeEditorModal({
               {activeTab === 'background' && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-bold text-white mb-1">Achtergrondkleur</h3>
+                    <h3 className="font-bold text-white mb-0.5">Achtergrond</h3>
                     <p className="text-[11px] text-slate-400">
-                      Kies een effen achtergrondkleur of transparant voor deze button.
+                      Kies een effen kleur, verloop of transparant.
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {colorPresets.map(c => (
-                      <button
-                        key={c}
-                        onClick={() => setLocalBadge(prev => ({ ...prev, backgroundColor: c, backgroundType: 'solid' }))}
-                        className="w-7 h-7 rounded-full border border-slate-700 shadow-sm transition hover:scale-110"
-                        style={{ backgroundColor: c }}
-                      />
-                    ))}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setLocalBadge(prev => ({ ...prev, backgroundType: 'solid' }))}
+                      className={`py-2 rounded-lg border text-center transition ${
+                        localBadge.backgroundType === 'solid'
+                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-semibold'
+                          : 'bg-slate-800 border-slate-750 text-slate-300'
+                      }`}
+                    >
+                      Effen Kleur
+                    </button>
+                    <button
+                      onClick={() => setLocalBadge(prev => ({ ...prev, backgroundType: 'transparent' }))}
+                      className={`py-2 rounded-lg border text-center transition ${
+                        localBadge.backgroundType === 'transparent'
+                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-semibold'
+                          : 'bg-slate-800 border-slate-750 text-slate-300'
+                      }`}
+                    >
+                      Transparant
+                    </button>
                   </div>
 
-                  <div className="flex items-center gap-3 pt-2">
-                    <input
-                      type="color"
-                      value={localBadge.backgroundColor || '#ffffff'}
-                      onChange={e => setLocalBadge(prev => ({ ...prev, backgroundColor: e.target.value, backgroundType: 'solid' }))}
-                      className="w-9 h-9 rounded border border-slate-700 bg-transparent cursor-pointer"
-                    />
-                    <div>
-                      <div className="font-semibold text-white">Eigen kleur</div>
-                      <span className="font-mono text-slate-400">{localBadge.backgroundColor}</span>
+                  {localBadge.backgroundType !== 'transparent' && (
+                    <div className="space-y-3 pt-2">
+                      <div className="flex flex-wrap gap-2">
+                        {quickColors.map(c => (
+                          <button
+                            key={c}
+                            onClick={() => setLocalBadge(prev => ({ ...prev, backgroundColor: c, backgroundType: 'solid' }))}
+                            className="w-7 h-7 rounded-full border border-slate-700 shadow-sm transition hover:scale-110"
+                            style={{ backgroundColor: c }}
+                          />
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-3 pt-1">
+                        <input
+                          type="color"
+                          value={localBadge.backgroundColor || '#ffffff'}
+                          onChange={e => setLocalBadge(prev => ({ ...prev, backgroundColor: e.target.value, backgroundType: 'solid' }))}
+                          className="w-9 h-9 rounded border border-slate-700 bg-transparent cursor-pointer"
+                        />
+                        <div>
+                          <div className="font-semibold text-white">Eigen kleurkiezer</div>
+                          <span className="font-mono text-slate-400">{localBadge.backgroundColor}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
             </div>
 
             {/* Bottom Modal Actions */}
-            <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-3">
+            <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-3 flex-wrap">
               <button
                 onClick={() => onSaveAllSlots(localBadge)}
                 className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition active:scale-95"
                 title="Pas deze instellingen (bijv. tekst of kleur) toe op álle buttons op het vel"
               >
                 <Copy className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Pas toe op álle buttons</span>
+                <span>Kopieer naar álle buttons</span>
               </button>
 
               <div className="flex items-center gap-2">

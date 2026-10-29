@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Type, Scissors, Trash2, Copy, Plus, Sparkles } from 'lucide-react';
+import { Type, Scissors, Trash2, Copy, Plus } from 'lucide-react';
 import { renderButtonCanvas } from '../utils/canvasRenderer';
 
 export function BadgeSlot({
@@ -11,7 +11,8 @@ export function BadgeSlot({
   onOpenImageEditor,
   onDuplicateToAll,
   onClearSlot,
-  onQuickUpload
+  onQuickUpload,
+  onMoveSlot
 }) {
   const canvasRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -55,6 +56,16 @@ export function BadgeSlot({
     e.preventDefault();
     setIsDragOver(false);
 
+    // If dragged from another slot on the sheet!
+    const sourceSlot = e.dataTransfer.getData('text/slotIndex');
+    if (sourceSlot !== '' && sourceSlot !== null && sourceSlot !== undefined) {
+      const srcIdx = parseInt(sourceSlot, 10);
+      if (!isNaN(srcIdx) && srcIdx !== index && onMoveSlot) {
+        onMoveSlot(srcIdx, index);
+        return;
+      }
+    }
+
     // If an image was dragged from the upload tray (via dataTransfer)
     const imgId = e.dataTransfer.getData('text/plain');
     if (imgId) {
@@ -75,7 +86,7 @@ export function BadgeSlot({
       onDrop={handleDrop}
       className={`group relative aspect-square rounded-full flex items-center justify-center transition-all ${
         isDragOver
-          ? 'scale-105 ring-4 ring-emerald-500 shadow-xl bg-emerald-500/10'
+          ? 'scale-105 ring-4 ring-emerald-500 shadow-2xl bg-emerald-500/15'
           : ''
       }`}
     >
@@ -90,23 +101,34 @@ export function BadgeSlot({
       />
 
       {badge ? (
-        /* Populated Badge Slot */
-        <div className="relative w-full h-full rounded-full shadow-md overflow-hidden bg-white">
+        /* Populated Badge Slot: Click to edit, or drag to another slot! */
+        <div
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.setData('text/slotIndex', index.toString());
+          }}
+          onClick={() => onOpenTextEditor(index)}
+          className="relative w-full h-full rounded-full shadow-md overflow-hidden bg-white cursor-pointer transition hover:ring-2 hover:ring-emerald-400"
+          title="Klik om te bewerken • Sleep om te verplaatsen naar een andere cirkel"
+        >
           <canvas
             ref={canvasRef}
-            className="w-full h-full block rounded-full"
+            className="w-full h-full block rounded-full pointer-events-none"
             style={{ width: '100%', height: '100%' }}
           />
 
-          {/* Badge Number Pill (subtle) */}
+          {/* Badge Number Pill */}
           <div className="absolute top-1.5 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur text-white text-[9px] font-mono px-1.5 py-0.2 rounded-full pointer-events-none opacity-70 group-hover:opacity-0 transition">
             #{index + 1}
           </div>
 
           {/* Slot Action Controls (Appear on hover) */}
-          <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-xs rounded-full flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
-            <span className="text-[10px] text-slate-300 font-semibold mb-0.5">
-              Button #{index + 1} • {template.faceDiameterMm}mm
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="absolute inset-0 bg-slate-950/75 backdrop-blur-xs rounded-full flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200"
+          >
+            <span className="text-[10px] text-slate-300 font-semibold mb-0.5 pointer-events-none">
+              Button #{index + 1}
             </span>
 
             <div className="flex items-center gap-1.5">
@@ -132,7 +154,7 @@ export function BadgeSlot({
               <button
                 onClick={() => onDuplicateToAll(index)}
                 className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg transition active:scale-95"
-                title="Kopieer dit ontwerp naar alle andere cirkels"
+                title="Kopieer dit ontwerp naar álle cirkels op het blad"
               >
                 <Copy className="w-3.5 h-3.5" />
               </button>
@@ -149,7 +171,7 @@ export function BadgeSlot({
           </div>
         </div>
       ) : (
-        /* Empty Badge Slot (Placeholder) - Accurately sized to VEVOR face vs cut ratio */
+        /* Empty Badge Slot (Placeholder) */
         <div
           onClick={() => fileInputRef.current?.click()}
           className="w-full h-full rounded-full border-2 border-dashed border-rose-400/80 hover:border-emerald-500 bg-slate-50/90 hover:bg-emerald-50/40 flex flex-col items-center justify-center text-center p-1.5 cursor-pointer transition-all shadow-inner group/empty"

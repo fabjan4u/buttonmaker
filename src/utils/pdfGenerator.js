@@ -9,7 +9,7 @@ export function calculateSheetGrid(paper, template, options = {}) {
   const cutDiam = template.cutDiameterMm;
 
   const availableWidth = paper.widthMm - 2 * marginMm;
-  // Reserve 16mm at bottom for calibration bar and metadata
+  // Reserve 14mm at bottom for calibration bar and metadata
   const availableHeight = paper.heightMm - 2 * marginMm - 14;
 
   const cols = Math.max(1, Math.floor((availableWidth + gapMm) / (cutDiam + gapMm)));
@@ -56,7 +56,7 @@ export function generateHighResBadgeDataUrl(badgeOptions, resolutionPx = 1000) {
 
 /**
  * Generates and downloads a print-ready 300 DPI PDF sheet on 100% true physical scale
- * Supports direct slot-based grid printing (matching badgermaker)
+ * Handles multiple pages automatically if slots count exceeds 1 page!
  */
 export async function generatePrintPdf(options) {
   const {
@@ -70,10 +70,16 @@ export async function generatePrintPdf(options) {
   } = options;
 
   const grid = calculateSheetGrid(paper, template);
+  const totalSlots = slots.length > 0 ? slots.length : grid.maxButtonsPerPage;
+  const totalPages = Math.max(1, Math.ceil(totalSlots / grid.maxButtonsPerPage));
+
+  // Orientation
+  const isLandscape = paper.widthMm > paper.heightMm;
+  const orientation = isLandscape ? 'landscape' : 'portrait';
 
   // Initialize jsPDF in millimeters
   const doc = new jsPDF({
-    orientation: paper.widthMm > paper.heightMm ? 'landscape' : 'portrait',
+    orientation,
     unit: 'mm',
     format: [paper.widthMm, paper.heightMm]
   });
@@ -83,105 +89,140 @@ export async function generatePrintPdf(options) {
   const renderResolution = Math.min(1600, Math.max(800, Math.round(template.cutDiameterMm * 12)));
   const rMm = template.cutDiameterMm / 2;
 
-  let slotIndex = 0;
+  let globalSlotIndex = 0;
   let activeBadgesCount = 0;
 
-  for (let r = 0; r < grid.rows; r++) {
-    for (let c = 0; c < grid.cols; c++) {
-      if (slotIndex >= grid.maxButtonsPerPage) break;
+  for (let page = 0; page < totalPages; page++) {
+    if (page > 0) {
+      doc.addPage([paper.widthMm, paper.heightMm], orientation);
+    }
 
-      const badge = slots[slotIndex];
-      const badgeX = grid.startX + c * (grid.cutDiam + grid.gapMm);
-      const badgeY = grid.startY + r * (grid.cutDiam + grid.gapMm);
-      const centerX = badgeX + rMm;
-      const centerY = badgeY + rMm;
+    for (let r = 0; r < grid.rows; r++) {
+      for (let c = 0; c < grid.cols; c++) {
+        if (globalSlotIndex >= totalSlots) break;
 
-      if (badge) {
-        activeBadgesCount++;
-        let imgData = imageCache.get(badge);
-        if (!imgData) {
-          imgData = generateHighResBadgeDataUrl(badge, renderResolution);
-          imageCache.set(badge, imgData);
+        const badge = slots[globalSlotIndex];
+        const badgeX = grid.startX + c * (grid.cutDiam + grid.gapMm);
+        const badgeY = grid.startY + r * (grid.cutDiam + grid.gapMm);
+        const centerX = badgeX + rMm;
+        const centerY = badgeY + rMm;
+
+        if (badge) {
+          activeBadgesCount++;
+          let imgData = imageCache.get(badge);
+          if (!imgData) {
+            imgData = generateHighResBadgeDataUrl(badge, renderResolution);
+            imageCache.set(badge, imgData);
+          }
+
+          // Add high-res raster artwork
+          doc.addImage(
+            imgData,
+            'PNG',
+            badgeX,
+            badgeY,
+            template.cutDiameterMm,
+            template.cutDiameterMm,
+            `badge-img-${globalSlotIndex}`,
+            'FAST'
+          );
         }
 
-        // Add high-res raster artwork
-        doc.addImage(
-          imgData,
-          'PNG',
-          badgeX,
-          badgeY,
-          template.cutDiameterMm,
-          template.cutDiameterMm,
-          `badge-img-${slotIndex}`,
-          'FAST'
-        );
-      }
+        // Draw vector cut guide around every slot
+        if (drawCutLine && cutLineStyle !== 'none') {
+          doc.saveGraphicsState();
+          doc.setDrawColor(badge ? 180 : 225, badge ? 180 : 225, badge ? 180 : 225);
+          doc.setLineWidth(0.18);
 
-      // Draw vector cut guide around every slot (or active slots)
-      if (drawCutLine && cutLineStyle !== 'none') {
-        doc.saveGraphicsState();
-        doc.setDrawColor(badge ? 180 : 225, badge ? 180 : 225, badge ? 180 : 225);
-        doc.setLineWidth(0.18);
+          if (cutLineStyle === 'dashed') {
+            doc.setLineDashPattern([1.5, 1.5], 0);
+          } else {
+            doc.setLineDashPattern([], 0);
+          }
 
-        if (cutLineStyle === 'dashed') {
-          doc.setLineDashPattern([1.5, 1.5], 0);
-        } else {
-          doc.setLineDashPattern([], 0);
+          doc.circle(centerX, centerY, rMm, 'S');
+          doc.restoreGraphicsState();
         }
 
-        doc.circle(centerX, centerY, rMm, 'S');
-        doc.restoreGraphicsState();
-      }
+        // Draw rotary punch alignment center crossmark
+        if (drawCenterMark) {
+          doc.saveGraphicsState();
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.1);
+          const crossSize = 1.2;
+          doc.line(centerX - crossSize, centerY, centerX + crossSize, centerY);
+          doc.line(centerX, centerY - crossSize, centerX, centerY + crossSize);
+          doc.restoreGraphicsState();
+        }
 
-      // Draw rotary punch alignment center crossmark
-      if (drawCenterMark) {
-        doc.saveGraphicsState();
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.1);
-        const crossSize = 1.2;
-        doc.line(centerX - crossSize, centerY, centerX + crossSize, centerY);
-        doc.line(centerX, centerY - crossSize, centerX, centerY + crossSize);
-        doc.restoreGraphicsState();
+        globalSlotIndex++;
       }
+      if (globalSlotIndex >= totalSlots) break;
+    }
 
-      slotIndex++;
+    // Header / Metadata at top of sheet
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    const pageLabel = totalPages > 1 ? ` (Pagina ${page + 1} van ${totalPages})` : '';
+    doc.text(
+      `ButtonMaker • Formaat: ${template.name} (Snijmaat: ${template.cutDiameterMm}mm / Gezicht: ${template.faceDiameterMm}mm) • VEVOR Standaard${pageLabel}`,
+      paper.marginMm,
+      paper.marginMm + 2
+    );
+
+    // Calibration test bar and printer instructions at bottom
+    if (includeCalibration) {
+      const bottomY = paper.heightMm - paper.marginMm - 4;
+
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 100, 100);
+      doc.text(
+        '⚠️ Belangrijk: Print op 100% / Schaal: Geen (Actual Size / Do not scale)',
+        paper.marginMm,
+        bottomY - 4
+      );
+
+      // 50mm Calibration bar
+      const calStartX = paper.widthMm - paper.marginMm - 50;
+      doc.setDrawColor(80, 80, 80);
+      doc.setLineWidth(0.4);
+      doc.line(calStartX, bottomY, calStartX + 50, bottomY);
+      doc.line(calStartX, bottomY - 1.5, calStartX, bottomY + 1.5);
+      doc.line(calStartX + 50, bottomY - 1.5, calStartX + 50, bottomY + 1.5);
+
+      doc.text('50 mm kalibratie meetlat (controleer met liniaal)', calStartX - 60, bottomY + 1);
     }
   }
 
-  // Header / Metadata at top of sheet
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(120, 120, 120);
-  doc.text(
-    `ButtonMaker • Formaat: ${template.name} (Snijmaat: ${template.cutDiameterMm}mm / Gezicht: ${template.faceDiameterMm}mm) • ${activeBadgesCount} buttons op ${paper.name.split(' ')[0]}`,
-    paper.marginMm,
-    paper.marginMm + 2
-  );
-
-  // Calibration test bar and printer instructions at bottom
-  if (includeCalibration) {
-    const bottomY = paper.heightMm - paper.marginMm - 4;
-
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 100, 100);
-    doc.text(
-      '⚠️ Belangrijk: Print op 100% / Schaal: Geen (Actual Size / Do not scale)',
-      paper.marginMm,
-      bottomY - 4
-    );
-
-    // 50mm Calibration bar
-    const calStartX = paper.widthMm - paper.marginMm - 50;
-    doc.setDrawColor(80, 80, 80);
-    doc.setLineWidth(0.4);
-    doc.line(calStartX, bottomY, calStartX + 50, bottomY);
-    doc.line(calStartX, bottomY - 1.5, calStartX, bottomY + 1.5);
-    doc.line(calStartX + 50, bottomY - 1.5, calStartX + 50, bottomY + 1.5);
-
-    doc.text('50 mm kalibratie meetlat (controleer met liniaal)', calStartX - 60, bottomY + 1);
-  }
-
   // Save the PDF
-  const filename = `buttons-${template.id}-${activeBadgesCount}stuks-${paper.id}.pdf`;
+  const filename = `vevor-buttons-${template.id}-${activeBadgesCount}stuks-${paper.id}.pdf`;
   doc.save(filename);
+}
+
+/**
+ * Downloads a single high-res PNG image
+ */
+export function downloadSinglePng(badgeState, filename = 'button-design.png', withCutGuide = false) {
+  const canvas = document.createElement('canvas');
+  const size = 1200;
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  renderButtonCanvas(ctx, {
+    ...badgeState,
+    width: size,
+    height: size,
+    showGuides: withCutGuide,
+    showFaceGuide: false,
+    showBleedShade: false,
+    showCutGuide: withCutGuide,
+    is3DPreview: false
+  });
+
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = canvas.toDataURL('image/png', 1.0);
+  link.click();
 }

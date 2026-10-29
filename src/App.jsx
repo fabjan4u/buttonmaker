@@ -7,22 +7,28 @@ import { BUTTON_TEMPLATES, PAPER_FORMATS } from './constants/templates';
 import { calculateSheetGrid, generatePrintPdf } from './utils/pdfGenerator';
 
 export default function App() {
-  const [template, setTemplate] = useState(BUTTON_TEMPLATES[0]); // 58mm
+  const [template, setTemplate] = useState(BUTTON_TEMPLATES[1]); // 32mm VEVOR default as user requested!
   const [paper, setPaper] = useState(PAPER_FORMATS[0]); // A4
   const [uploadedImages, setUploadedImages] = useState([]);
   const [editingSlotIndex, setEditingSlotIndex] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   // Compute grid slots capacity
   const grid = useMemo(() => calculateSheetGrid(paper, template), [paper, template]);
-  const totalSlots = grid.maxButtonsPerPage;
+  const slotsPerPage = grid.maxButtonsPerPage;
 
-  // Badges array: one entry per slot on the current sheet
-  const [badges, setBadges] = useState(() => {
-    const initial = Array(totalSlots).fill(null);
-    // Add 1 sample badge with curved text in slot #0 so user sees the text feature right away
-    initial[0] = {
-      id: 'sample-1',
+  // Helper to create a sample badge
+  const createSampleBadge = (tmpl) => {
+    const is32 = tmpl.faceDiameterMm <= 32;
+    return {
+      id: 'sample-' + Date.now(),
       image: null,
       imageProps: { x: 0, y: 0, scale: 1, rotation: 0, flipX: false, flipY: false, brightness: 100, contrast: 100, grayscale: 0 },
       backgroundColor: '#0f172a',
@@ -35,14 +41,14 @@ export default function App() {
           text: '★ BUTTON MAKER ★',
           style: 'curved-top',
           fontFamily: "'Montserrat', sans-serif",
-          fontSize: 26,
+          fontSize: is32 ? 18 : 26,
           bold: true,
           italic: false,
           color: '#facc15',
           hasStroke: true,
           strokeColor: '#0f172a',
           strokeWidth: 3,
-          letterSpacing: 4,
+          letterSpacing: is32 ? 2 : 4,
           curveRadiusRatio: 0.76,
           rotationDeg: 0,
           x: 0,
@@ -50,10 +56,10 @@ export default function App() {
         },
         {
           id: 't-2',
-          text: '58MM BADGE',
+          text: `${tmpl.faceDiameterMm}MM VEVOR`,
           style: 'straight',
           fontFamily: "'Bebas Neue', cursive",
-          fontSize: 44,
+          fontSize: is32 ? 28 : 44,
           bold: true,
           italic: false,
           color: '#ffffff',
@@ -63,14 +69,14 @@ export default function App() {
           letterSpacing: 2,
           rotationDeg: 0,
           x: 0,
-          y: 0
+          y: is32 ? -1 : 0
         },
         {
           id: 't-3',
-          text: 'PRINT READY 300 DPI',
+          text: `STANS: ${tmpl.cutDiameterMm}MM`,
           style: 'curved-bottom',
           fontFamily: "'Inter', sans-serif",
-          fontSize: 18,
+          fontSize: is32 ? 14 : 18,
           bold: true,
           italic: false,
           color: '#94a3b8',
@@ -85,23 +91,34 @@ export default function App() {
         }
       ]
     };
+  };
+
+  // Badges array: one entry per slot on the current sheet(s)
+  const [badges, setBadges] = useState(() => {
+    const initial = Array(slotsPerPage).fill(null);
+    initial[0] = createSampleBadge(BUTTON_TEMPLATES[1]);
     return initial;
   });
 
   // Adjust badges array size when paper or template changes
   useEffect(() => {
     setBadges(prev => {
-      const next = Array(totalSlots).fill(null);
-      for (let i = 0; i < totalSlots; i++) {
+      const minSlots = slotsPerPage;
+      const pages = Math.max(1, Math.ceil(prev.length / slotsPerPage));
+      const targetLength = Math.max(minSlots, pages * slotsPerPage);
+
+      const next = Array(targetLength).fill(null);
+      for (let i = 0; i < targetLength; i++) {
         if (prev[i]) next[i] = prev[i];
       }
       return next;
     });
-  }, [totalSlots]);
+    setCurrentPage(0);
+  }, [slotsPerPage]);
 
   // Helper to construct a badge from an HTMLImageElement
   const createBadgeFromImage = (imgElement, name = '') => {
-    const size = 800;
+    const size = 640;
     const cutRadius = (size / 2) * 0.94;
     const targetDiam = cutRadius * 2;
     const scale = targetDiam / Math.min(imgElement.naturalWidth, imgElement.naturalHeight);
@@ -123,7 +140,7 @@ export default function App() {
       },
       backgroundColor: '#ffffff',
       backgroundType: 'solid',
-      textLayers: [] // clean image without overlapping text by default
+      textLayers: []
     };
   };
 
@@ -154,16 +171,27 @@ export default function App() {
 
             // Auto-populate empty slots with the newly uploaded images!
             setBadges(prev => {
-              const updated = [...prev];
+              // Ensure we have enough slots across pages for all uploaded photos
+              const emptyCount = prev.filter(b => b === null).length;
+              let targetBadges = [...prev];
+
+              if (newImages.length > emptyCount) {
+                const neededExtraSlots = newImages.length - emptyCount;
+                const extraPages = Math.ceil(neededExtraSlots / slotsPerPage);
+                targetBadges = [...targetBadges, ...Array(extraPages * slotsPerPage).fill(null)];
+              }
+
               let imgIdx = 0;
-              for (let slot = 0; slot < updated.length; slot++) {
-                if (!updated[slot] && imgIdx < newImages.length) {
-                  updated[slot] = createBadgeFromImage(newImages[imgIdx].imgElement, newImages[imgIdx].name);
+              for (let slot = 0; slot < targetBadges.length; slot++) {
+                if (!targetBadges[slot] && imgIdx < newImages.length) {
+                  targetBadges[slot] = createBadgeFromImage(newImages[imgIdx].imgElement, newImages[imgIdx].name);
                   imgIdx++;
                 }
               }
-              return updated;
+              return targetBadges;
             });
+
+            showToast(`✓ ${newImages.length} foto's geüpload en op het blad geplaatst!`);
           }
         };
         img.src = e.target.result;
@@ -180,6 +208,21 @@ export default function App() {
     setBadges(prev => {
       const updated = [...prev];
       updated[slotIndex] = createBadgeFromImage(imgItem.imgElement, imgItem.name);
+      return updated;
+    });
+  };
+
+  // Moving / swapping badge between two slots on the sheet
+  const handleMoveSlot = (fromIndex, toIndex) => {
+    if (fromIndex === toIndex) return;
+
+    setBadges(prev => {
+      const updated = [...prev];
+      const sourceBadge = updated[fromIndex];
+      const targetBadge = updated[toIndex];
+
+      updated[toIndex] = sourceBadge;
+      updated[fromIndex] = targetBadge;
       return updated;
     });
   };
@@ -225,7 +268,6 @@ export default function App() {
           if (item.img) {
             updated[i] = createBadgeFromImage(item.img, item.name);
           } else {
-            // duplicate sample badge
             const sample = prev.find(Boolean);
             if (sample) updated[i] = JSON.parse(JSON.stringify(sample));
           }
@@ -234,6 +276,7 @@ export default function App() {
       }
       return updated;
     });
+    showToast('✓ Alle lege cirkels gevuld!');
   };
 
   // Duplicate a specific slot to ALL other slots
@@ -248,6 +291,14 @@ export default function App() {
         textLayers: (sourceBadge.textLayers || []).map(t => ({ ...t }))
       }));
     });
+    showToast('✓ Dit ontwerp is naar álle buttons op het blad gekopieerd!');
+  };
+
+  // Add extra blank page of slots
+  const handleAddPage = () => {
+    setBadges(prev => [...prev, ...Array(slotsPerPage).fill(null)]);
+    setCurrentPage(Math.floor(badges.length / slotsPerPage));
+    showToast('✓ Extra pagina toegevoegd aan het afdrukvel!');
   };
 
   // Clear single slot
@@ -262,7 +313,8 @@ export default function App() {
   // Clear entire sheet
   const handleResetSheet = () => {
     if (window.confirm('Weet je zeker dat je alle cirkels op het afdrukvel wilt leegmaken?')) {
-      setBadges(Array(totalSlots).fill(null));
+      setBadges(Array(slotsPerPage).fill(null));
+      setCurrentPage(0);
     }
   };
 
@@ -292,6 +344,7 @@ export default function App() {
       });
     });
     setEditingSlotIndex(null);
+    showToast('✓ Tekst & stijl toegepast op alle buttons!');
   };
 
   // Download Print PDF
@@ -309,6 +362,7 @@ export default function App() {
         drawCenterMark: true,
         includeCalibration: true
       });
+      showToast('🎉 Printklare PDF succesvol gedownload!');
     } catch (err) {
       console.error('PDF error:', err);
       alert('Fout bij het genereren van de PDF: ' + err.message);
@@ -318,7 +372,14 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-slate-900 text-slate-100">
+    <div className="flex flex-col h-screen overflow-hidden bg-slate-900 text-slate-100 relative">
+      {/* Toast Feedback Notification */}
+      {toastMessage && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 animate-bounce">
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* Top Navbar */}
       <Navbar
         template={template}
@@ -330,7 +391,7 @@ export default function App() {
         onResetSheet={handleResetSheet}
         isGenerating={isGenerating}
         badgesCount={badges.filter(Boolean).length}
-        totalSlots={totalSlots}
+        totalSlots={badges.length}
       />
 
       {/* Main Badgermaker Workspace (Left Uploads Gallery + Center Sheet) */}
@@ -341,7 +402,7 @@ export default function App() {
           onDeleteUploadedImage={(id) => setUploadedImages(prev => prev.filter(i => i.id !== id))}
           onClearAllUploads={() => setUploadedImages([])}
           onAutoFillSheet={handleAutoFillSheet}
-          onClearSheet={() => setBadges(Array(totalSlots).fill(null))}
+          onClearSheet={() => setBadges(Array(slotsPerPage).fill(null))}
           template={template}
         />
 
@@ -349,16 +410,20 @@ export default function App() {
           paper={paper}
           template={template}
           badges={badges}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          onAddPage={handleAddPage}
           onDropImage={handleDropImage}
           onOpenTextEditor={(idx) => setEditingSlotIndex(idx)}
           onOpenImageEditor={(idx) => setEditingSlotIndex(idx)}
           onDuplicateToAll={handleDuplicateToAll}
           onClearSlot={handleClearSlot}
           onQuickUpload={handleQuickUpload}
+          onMoveSlot={handleMoveSlot}
         />
       </div>
 
-      {/* Text & Image Adjustment Modal (with Curved Text module intact!) */}
+      {/* Text & Image Adjustment Modal (with full Curved Text module) */}
       {editingSlotIndex !== null && badges[editingSlotIndex] && (
         <BadgeEditorModal
           isOpen={editingSlotIndex !== null}
