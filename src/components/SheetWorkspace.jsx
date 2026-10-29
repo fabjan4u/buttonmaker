@@ -57,9 +57,9 @@ export function SheetWorkspace({
             <span>{template.name}</span>
           </div>
           <div className="flex items-center gap-2 text-[10px]">
-            <span>Snijmaat: {template.cutDiameterMm}mm</span>
+            <span className="text-rose-600 font-semibold">🔴 Snijmaat: {template.cutDiameterMm}mm (VEVOR stans)</span>
             <span>|</span>
-            <span>Zichtbaar: {template.faceDiameterMm}mm</span>
+            <span className="text-emerald-700 font-semibold">🟢 Zichtbaar: {template.faceDiameterMm}mm (voorkant)</span>
           </div>
         </div>
 

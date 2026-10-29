@@ -189,6 +189,24 @@ export function BadgeEditorModal({
           
           {/* LEFT: Live Interactive Canvas + 3D Mini Preview */}
           <div className="lg:col-span-6 flex flex-col items-center justify-between bg-slate-950/60 rounded-2xl p-5 border border-slate-800/80">
+            {/* VEVOR Specific Line Guide Explanation */}
+            <div className="w-full flex items-center justify-center gap-3 text-[11px] bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800 mb-3 flex-wrap">
+              <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                <span className="w-2.5 h-0.5 border-t-2 border-dashed border-emerald-400"></span>
+                🟢 Voorkant: {template.faceDiameterMm}mm
+              </span>
+              <span className="text-slate-600">•</span>
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <span className="w-2 h-2 rounded bg-slate-700"></span>
+                Omslag: {template.bleedMm}mm
+              </span>
+              <span className="text-slate-600">•</span>
+              <span className="flex items-center gap-1.5 text-rose-400 font-medium">
+                <span className="w-2.5 h-0.5 border-t-2 border-dashed border-rose-400"></span>
+                🔴 VEVOR Stans: {template.cutDiameterMm}mm
+              </span>
+            </div>
+
             {/* Canvas Area */}
             <div className="relative my-auto flex flex-col items-center">
               <div className="rounded-full bg-checkerboard shadow-2xl border-4 border-slate-800 overflow-hidden">

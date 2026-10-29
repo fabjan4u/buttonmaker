@@ -17,6 +17,9 @@ export function BadgeSlot({
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Exact physical ratio for VEVOR press (e.g. 32mm / 44mm = 72.7%)
+  const faceRatioPercent = Math.round((template.faceDiameterMm / template.cutDiameterMm) * 100);
+
   // Render canvas thumbnail when badge state changes
   useEffect(() => {
     if (!badge || !canvasRef.current) return;
@@ -103,7 +106,7 @@ export function BadgeSlot({
           {/* Slot Action Controls (Appear on hover) */}
           <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-xs rounded-full flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
             <span className="text-[10px] text-slate-300 font-semibold mb-0.5">
-              Button #{index + 1}
+              Button #{index + 1} • {template.faceDiameterMm}mm
             </span>
 
             <div className="flex items-center gap-1.5">
@@ -146,21 +149,25 @@ export function BadgeSlot({
           </div>
         </div>
       ) : (
-        /* Empty Badge Slot (Placeholder) */
+        /* Empty Badge Slot (Placeholder) - Accurately sized to VEVOR face vs cut ratio */
         <div
           onClick={() => fileInputRef.current?.click()}
-          className="w-full h-full rounded-full border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-slate-50/80 hover:bg-emerald-50/40 flex flex-col items-center justify-center text-center p-2 cursor-pointer transition-all shadow-inner group/empty"
+          className="w-full h-full rounded-full border-2 border-dashed border-rose-400/80 hover:border-emerald-500 bg-slate-50/90 hover:bg-emerald-50/40 flex flex-col items-center justify-center text-center p-1.5 cursor-pointer transition-all shadow-inner group/empty"
+          title={`Snijlijn: ${template.cutDiameterMm}mm (rood) • Voorkant: ${template.faceDiameterMm}mm (groen)`}
         >
-          {/* Inner concentric ring for visible guide representation */}
-          <div className="w-[83%] h-[83%] rounded-full border border-dashed border-emerald-400/40 flex flex-col items-center justify-center pointer-events-none">
-            <div className="w-7 h-7 rounded-full bg-slate-200 group-hover/empty:bg-emerald-500 group-hover/empty:text-white text-slate-500 flex items-center justify-center transition mb-1 shadow-sm">
-              <Plus className="w-4 h-4" />
+          {/* Exact VEVOR Face circle (Green dashed) */}
+          <div
+            style={{ width: `${faceRatioPercent}%`, height: `${faceRatioPercent}%` }}
+            className="rounded-full border border-dashed border-emerald-500 flex flex-col items-center justify-center pointer-events-none p-1"
+          >
+            <div className="w-6 h-6 rounded-full bg-slate-200 group-hover/empty:bg-emerald-500 group-hover/empty:text-white text-slate-600 flex items-center justify-center transition mb-0.5 shadow-xs">
+              <Plus className="w-3.5 h-3.5" />
             </div>
-            <span className="text-[10px] font-semibold text-slate-600 group-hover/empty:text-emerald-700 leading-tight">
+            <span className="text-[9px] font-bold text-slate-700 group-hover/empty:text-emerald-700 leading-tight">
               Sleep foto
             </span>
-            <span className="text-[8px] text-slate-400 font-mono">
-              #{index + 1} • {template.name.split(' ')[0]}
+            <span className="text-[8px] text-emerald-600 font-mono font-semibold">
+              {template.faceDiameterMm}mm
             </span>
           </div>
         </div>
