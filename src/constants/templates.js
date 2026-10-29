@@ -14,7 +14,7 @@ export const BUTTON_TEMPLATES = [
     id: '25mm',
     name: '25 mm (1")',
     category: 'metric',
-    popular: true,
+    popular: false,
     faceDiameterMm: 25.0,
     cutDiameterMm: 35.2,
     bleedMm: 5.1,

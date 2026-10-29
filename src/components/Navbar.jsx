@@ -51,10 +51,15 @@ export function Navbar({
             >
               {BUTTON_TEMPLATES.map(t => (
                 <option key={t.id} value={t.id} className="bg-slate-900 text-white font-normal">
-                  {t.name}
+                  {t.name}{t.popular ? ' ★ (Populair)' : ''}
                 </option>
               ))}
             </select>
+            {template.popular && (
+              <span className="hidden xl:inline text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.5 rounded ml-1.5 uppercase tracking-wider">
+                Populair
+              </span>
+            )}
           </div>
 
           {/* Paper Format Selector */}
