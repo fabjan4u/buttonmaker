@@ -27,12 +27,15 @@ export function renderButtonCanvas(ctx, options) {
   const cx = width / 2;
   const cy = height / 2;
 
+  // Safe fallback template if not provided
+  const tmpl = template || { faceDiameterMm: 36.0, cutDiameterMm: 44.0 };
+
   // Exact relative radii based on physical button specifications
   // When printing (showGuides === false) or rendering in a round slot, cutRadius is exactly size / 2.
   // Slight padding is only used if explicitly requested (e.g. editor modal preview)
   const paddingRatio = usePadding ? 0.04 : 0;
   const cutRadius = (size / 2) * (1 - paddingRatio);
-  const faceRadius = cutRadius * (template.faceDiameterMm / template.cutDiameterMm);
+  const faceRadius = cutRadius * (tmpl.faceDiameterMm / tmpl.cutDiameterMm);
 
   // Clear canvas
   ctx.clearRect(0, 0, width, height);

@@ -30,7 +30,7 @@ export function BadgeMockup({ badgeState }) {
           <span>Fysieke Badge Preview</span>
         </div>
         <span className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">
-          {badgeState.template.faceDiameterMm} mm
+          {badgeState?.template?.faceDiameterMm || 36} mm
         </span>
       </div>
 

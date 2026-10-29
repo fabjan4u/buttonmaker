@@ -37,7 +37,7 @@ export function calculateSheetGrid(paper, template, options = {}) {
 /**
  * Generates an ultra high-res (300 DPI) raster image of a badge
  */
-export function generateHighResBadgeDataUrl(badgeOptions, resolutionPx = 1000) {
+export function generateHighResBadgeDataUrl(badgeOptions, template, resolutionPx = 1000) {
   const canvas = document.createElement('canvas');
   canvas.width = resolutionPx;
   canvas.height = resolutionPx;
@@ -45,6 +45,7 @@ export function generateHighResBadgeDataUrl(badgeOptions, resolutionPx = 1000) {
 
   renderButtonCanvas(ctx, {
     ...badgeOptions,
+    template,
     width: resolutionPx,
     height: resolutionPx,
     showGuides: false,
@@ -111,7 +112,7 @@ export async function generatePrintPdf(options) {
           activeBadgesCount++;
           let imgData = imageCache.get(badge);
           if (!imgData) {
-            imgData = generateHighResBadgeDataUrl(badge, renderResolution);
+            imgData = generateHighResBadgeDataUrl(badge, template, renderResolution);
             imageCache.set(badge, imgData);
           }
 
@@ -203,7 +204,7 @@ export async function generatePrintPdf(options) {
 /**
  * Downloads a single high-res PNG image
  */
-export function downloadSinglePng(badgeState, filename = 'button-design.png', withCutGuide = false) {
+export function downloadSinglePng(badgeState, template, filename = 'button-design.png', withCutGuide = false) {
   const canvas = document.createElement('canvas');
   const size = 1200;
   canvas.width = size;
@@ -212,6 +213,7 @@ export function downloadSinglePng(badgeState, filename = 'button-design.png', wi
 
   renderButtonCanvas(ctx, {
     ...badgeState,
+    template,
     width: size,
     height: size,
     showGuides: withCutGuide,
