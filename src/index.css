@@ -50,6 +50,11 @@ input[type="range"] {
 /* Circular Badge Cropper Styling */
 .badge-cropper-wrapper .cropper-view-box {
   border-radius: 50%;
+  outline: 2px dashed #10b981;
+  outline-color: #10b981;
+}
+
+.badge-cropper-wrapper.crop-mode-bleed .cropper-view-box {
   outline: 2px dashed #f43f5e;
   outline-color: #f43f5e;
 }
@@ -59,15 +64,15 @@ input[type="range"] {
   background-color: transparent;
 }
 
-/* Inner Face Guide Ring on Cropper */
-.badge-cropper-wrapper .cropper-view-box::after {
+/* Inner Face Guide Ring on Cropper (only shown when in bleed mode) */
+.badge-cropper-wrapper.crop-mode-bleed .cropper-view-box::after {
   content: '';
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: var(--face-ratio, 72.7%);
-  height: var(--face-ratio, 72.7%);
+  width: var(--face-ratio, 81.8%);
+  height: var(--face-ratio, 81.8%);
   border-radius: 50%;
   border: 2px dashed #10b981;
   pointer-events: none;

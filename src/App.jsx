@@ -29,11 +29,11 @@ export default function App() {
 
   // Helper to create a sample badge
   const createSampleBadge = (tmpl) => {
-    const is32 = tmpl.faceDiameterMm <= 32;
+    const is32 = tmpl.faceDiameterMm <= 36;
     return {
       id: 'sample-' + Date.now(),
       image: null,
-      imageProps: { x: 0, y: 0, scale: 1, rotation: 0, flipX: false, flipY: false, brightness: 100, contrast: 100, grayscale: 0 },
+      imageProps: { x: 0, y: 0, scale: 1, fitMode: 'face', rotation: 0, flipX: false, flipY: false, brightness: 100, contrast: 100, grayscale: 0 },
       backgroundColor: '#0f172a',
       backgroundType: 'gradient',
       gradientColor2: '#047857',
@@ -119,7 +119,7 @@ export default function App() {
     setCurrentPage(0);
   }, [slotsPerPage]);
 
-  // Helper to construct a badge from an HTMLImageElement (Direct Cover Crop)
+  // Helper to construct a badge from an HTMLImageElement (Direct Cover Crop to 36mm Green Line)
   const createBadgeFromImage = (imgElement, name = '') => {
     return {
       id: 'badge-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
@@ -128,7 +128,8 @@ export default function App() {
       imageProps: {
         x: 0,
         y: 0,
-        scale: 1.0, // 1.0 = automatic cover crop to cut circle
+        scale: 1.0, // 1.0 = automatic cover crop to green line (36mm)
+        fitMode: 'face', // Face circle = maximal image on the pin!
         rotation: 0,
         flipX: false,
         flipY: false,
@@ -346,7 +347,7 @@ export default function App() {
   };
 
   // Apply cropped image to a specific slot
-  const handleApplyCrop = (slotIndex, croppedImg, croppedDataUrl) => {
+  const handleApplyCrop = (slotIndex, croppedImg, croppedDataUrl, fitMode = 'face') => {
     setBadges(prev => {
       const copy = [...prev];
       if (copy[slotIndex]) {
@@ -355,6 +356,7 @@ export default function App() {
           image: croppedImg,
           imageProps: {
             ...copy[slotIndex].imageProps,
+            fitMode: fitMode,
             x: 0,
             y: 0,
             scale: 1.0,
@@ -364,11 +366,11 @@ export default function App() {
       }
       return copy;
     });
-    showToast('✓ Foto direct bijgesneden naar het juiste formaat!');
+    showToast(`✓ Foto direct gecropt op de groene lijn (${template.faceDiameterMm} mm)!`);
   };
 
   // Apply crop to a gallery item and any slots currently using it
-  const handleApplyGalleryCrop = (item, croppedImg, croppedDataUrl) => {
+  const handleApplyGalleryCrop = (item, croppedImg, croppedDataUrl, fitMode = 'face') => {
     setUploadedImages(prev => prev.map(u => {
       if (u.id === item.id) {
         return { ...u, url: croppedDataUrl, imgElement: croppedImg };
@@ -381,14 +383,14 @@ export default function App() {
         return {
           ...b,
           image: croppedImg,
-          imageProps: { ...b.imageProps, x: 0, y: 0, scale: 1.0, rotation: 0 }
+          imageProps: { ...b.imageProps, fitMode: fitMode, x: 0, y: 0, scale: 1.0, rotation: 0 }
         };
       }
       return b;
     }));
 
     setGalleryCropItem(null);
-    showToast('✓ Galerijfoto direct bijgesneden!');
+    showToast(`✓ Galerijfoto gecropt op ${template.faceDiameterMm} mm!`);
   };
 
   // Download Print PDF

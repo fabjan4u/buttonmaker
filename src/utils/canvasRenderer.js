@@ -72,16 +72,20 @@ export function renderButtonCanvas(ctx, options) {
     ctx.fillRect(0, 0, width, height);
   }
 
-  // 2. Render Image Layer (Direct Cover-Crop to Circle)
+  // 2. Render Image Layer (Direct Cover-Crop to Face Circle / Green Line)
   if (image && image.complete && image.naturalWidth > 0) {
     ctx.save();
 
     const imgW = image.naturalWidth;
     const imgH = image.naturalHeight;
     const minDim = Math.min(imgW, imgH);
-    const targetDiam = cutRadius * 2;
+    
+    // Target diameter:
+    // Default is faceRadius * 2 (the green line, e.g. 36mm) so user gets the MAXIMAL image on the visible pin!
+    // (If fitMode === 'bleed', it fills to the cutRadius * 2 red cut line)
+    const targetDiam = (imageProps.fitMode === 'bleed') ? (cutRadius * 2) : (faceRadius * 2);
 
-    // Automatic cover scale: makes the smaller dimension fill the badge cut circle 100%
+    // Automatic cover scale: makes the smaller dimension fill the target circle 100%
     const coverScale = targetDiam / minDim;
 
     // User zoom factor (default 1.0 = exact cover fit)

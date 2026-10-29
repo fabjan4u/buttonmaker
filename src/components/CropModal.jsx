@@ -16,8 +16,9 @@ export function CropModal({
   const imageRef = useRef(null);
   const cropperRef = useRef(null);
   const [imageSrc, setImageSrc] = useState('');
+  const [cropTarget, setCropTarget] = useState('face'); // 'face' = groene lijn (36mm), 'bleed' = rode lijn (44mm)
 
-  // Ratio of face diameter to cut diameter (e.g. 32 / 44 = 72.7%)
+  // Ratio of face diameter to cut diameter (e.g. 36 / 44 = 81.8%)
   const faceRatioPercent = Math.round((template.faceDiameterMm / template.cutDiameterMm) * 100);
 
   useEffect(() => {
@@ -87,7 +88,7 @@ export function CropModal({
     const croppedDataUrl = canvas.toDataURL('image/png', 1.0);
     const croppedImg = new Image();
     croppedImg.onload = () => {
-      onApplyCrop(slotIndex, croppedImg, croppedDataUrl);
+      onApplyCrop(slotIndex, croppedImg, croppedDataUrl, cropTarget);
       onClose();
     };
     croppedImg.src = croppedDataUrl;
@@ -118,7 +119,7 @@ export function CropModal({
         style={{ '--face-ratio': `${faceRatioPercent}%` }}
       >
         {/* Modal Header */}
-        <div className="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+        <div className="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60 flex-wrap gap-2">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-400 flex items-center justify-center">
               <Scissors className="w-4 h-4" />
@@ -127,13 +128,42 @@ export function CropModal({
               <h2 className="text-sm font-bold text-white flex items-center gap-2">
                 Foto Bijsnijden naar Cirkel
                 <span className="text-[11px] font-mono text-emerald-400 font-normal bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  Button #{slotIndex + 1} • {template.faceDiameterMm}mm
+                  Button #{slotIndex + 1}
                 </span>
               </h2>
               <p className="text-[11px] text-slate-400">
-                Verplaats of schaal het kader naar de gewenste uitsnede.
+                Kies uitsnede voor de maximale afbeelding op de pin.
               </p>
             </div>
+          </div>
+
+          {/* Mode Selector Toggle */}
+          <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 p-1 rounded-xl text-xs">
+            <button
+              onClick={() => setCropTarget('face')}
+              className={`px-3 py-1 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                cropTarget === 'face'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title={`Cropt exact passend op de zichtbare voorkant (${template.faceDiameterMm} mm)`}
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-300"></span>
+              <span>Groene Lijn ({template.faceDiameterMm} mm)</span>
+            </button>
+
+            <button
+              onClick={() => setCropTarget('bleed')}
+              className={`px-3 py-1 rounded-lg font-semibold transition flex items-center gap-1.5 ${
+                cropTarget === 'bleed'
+                  ? 'bg-rose-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title={`Cropt inclusief de aflooprand (${template.cutDiameterMm} mm)`}
+            >
+              <span className="w-2 h-2 rounded-full bg-rose-300"></span>
+              <span>Rode Lijn ({template.cutDiameterMm} mm)</span>
+            </button>
           </div>
 
           <button
@@ -144,16 +174,16 @@ export function CropModal({
           </button>
         </div>
 
-        {/* Legend Notice for VEVOR press */}
+        {/* Legend Notice */}
         <div className="px-5 py-2 bg-slate-950/40 border-b border-slate-800 flex items-center justify-between text-[11px] flex-wrap gap-2">
           <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5 text-slate-300">
-              <span className="w-3 h-3 rounded-full border border-dashed border-rose-500 inline-block"></span>
-              <span>Rode ring: <strong>{template.cutDiameterMm}mm</strong> (snijrand)</span>
+            <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+              <span className="w-3 h-3 rounded-full border-2 border-dashed border-emerald-400 inline-block"></span>
+              <span>Groene ring: <strong>{template.faceDiameterMm} mm</strong> (zichtbaar oppervlak / maximale foto)</span>
             </span>
-            <span className="flex items-center gap-1.5 text-slate-300">
-              <span className="w-3 h-3 rounded-full border border-dashed border-emerald-400 inline-block"></span>
-              <span>Groene ring: <strong>{template.faceDiameterMm}mm</strong> (voorkant pin)</span>
+            <span className="flex items-center gap-1.5 text-slate-400">
+              <span className="w-3 h-3 rounded-full border border-dashed border-rose-500 inline-block"></span>
+              <span>Rode ring: <strong>{template.cutDiameterMm} mm</strong> (stansmaat)</span>
             </span>
           </div>
           <span className="text-slate-400 italic">
@@ -163,7 +193,7 @@ export function CropModal({
 
         {/* Cropper Container */}
         <div className="flex-1 min-h-[340px] max-h-[56vh] bg-slate-950 relative overflow-hidden flex items-center justify-center p-2">
-          <div className="w-full h-full max-h-[54vh] relative badge-cropper-wrapper">
+          <div className={`w-full h-full max-h-[54vh] relative badge-cropper-wrapper ${cropTarget === 'bleed' ? 'crop-mode-bleed' : 'crop-mode-face'}`}>
             <img
               ref={imageRef}
               src={imageSrc}

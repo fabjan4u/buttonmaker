@@ -121,15 +121,9 @@ export function BadgeEditorModal({
   // Quick Image Sizing Helpers
   const handleFitToFace = () => {
     if (!localBadge.image) return;
-    const img = localBadge.image;
-    const faceRatio = template.faceDiameterMm / template.cutDiameterMm;
-    const minDim = Math.min(img.naturalWidth, img.naturalHeight);
-    const maxDim = Math.max(img.naturalWidth, img.naturalHeight);
-    const targetScale = faceRatio * (minDim / maxDim);
-
     setLocalBadge(prev => ({
       ...prev,
-      imageProps: { ...prev.imageProps, x: 0, y: 0, scale: Number(targetScale.toFixed(2)) }
+      imageProps: { ...prev.imageProps, fitMode: 'face', scale: 1.0, x: 0, y: 0 }
     }));
   };
 
@@ -137,7 +131,7 @@ export function BadgeEditorModal({
     if (!localBadge.image) return;
     setLocalBadge(prev => ({
       ...prev,
-      imageProps: { ...prev.imageProps, x: 0, y: 0, scale: 1.0 }
+      imageProps: { ...prev.imageProps, fitMode: 'bleed', scale: 1.0, x: 0, y: 0 }
     }));
   };
 
@@ -634,20 +628,20 @@ export function BadgeEditorModal({
                       <div className="grid grid-cols-3 gap-2">
                         <button
                           onClick={handleFitToFace}
-                          className="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold flex items-center justify-center gap-1.5 transition"
-                          title="Past foto binnen de groene voorkantcirkel"
+                          className="py-2 px-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-semibold flex items-center justify-center gap-1.5 transition"
+                          title={`Past foto binnen de groene lijn (${template.faceDiameterMm} mm) voor maximale afbeelding`}
                         >
                           <Minimize2 className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Passend (Fit)</span>
+                          <span>Groene Lijn ({template.faceDiameterMm}mm)</span>
                         </button>
 
                         <button
                           onClick={handleFillCutCircle}
                           className="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold flex items-center justify-center gap-1.5 transition"
-                          title="Vult de hele button inclusief aflooprand"
+                          title={`Vult de hele button tot de rode stansrand (${template.cutDiameterMm} mm)`}
                         >
-                          <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Vullend (Fill)</span>
+                          <Maximize2 className="w-3.5 h-3.5 text-rose-400" />
+                          <span>Rode Lijn ({template.cutDiameterMm}mm)</span>
                         </button>
 
                         <button

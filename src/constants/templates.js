@@ -1,36 +1,58 @@
 export const BUTTON_TEMPLATES = [
   {
     id: '32mm',
-    name: '32 mm (VEVOR JM-32 / 1.25")',
+    name: '32 mm (JM-32 • 36 mm Groene Lijn / 44 mm Stans)',
     category: 'metric',
     popular: true,
-    faceDiameterMm: 32.0,
+    faceDiameterMm: 36.0,
     cutDiameterMm: 44.0,
-    bleedMm: 6.0,
-    press: 'VEVOR JM-32 Button Maker (Stansmaat / Cirkelsnijder: 44 mm)',
-    description: 'Exact afgestemd op de VEVOR JM-32 stans (44mm papiermaat, 32mm zichtbaar).'
+    bleedMm: 4.0,
+    press: 'VEVOR JM-32 Button Maker (Stans: 44 mm)',
+    description: '36 mm maximale afbeelding op de groene lijn, 44 mm VEVOR stansmaat.'
   },
   {
     id: '58mm',
-    name: '58 mm (VEVOR JM-58 / 2.25")',
+    name: '58 mm (JM-58 • 58 mm Groene Lijn / 70 mm Stans)',
     category: 'metric',
     popular: true,
     faceDiameterMm: 58.0,
     cutDiameterMm: 70.0,
     bleedMm: 6.0,
-    press: 'VEVOR JM-58 Button Maker (Stansmaat / Cirkelsnijder: 70 mm)',
-    description: 'Exact afgestemd op de VEVOR JM-58 stans (70mm papiermaat, 58mm zichtbaar).'
+    press: 'VEVOR JM-58 Button Maker (Stans: 70 mm)',
+    description: '58 mm ontwerp op de groene lijn, 70 mm VEVOR stansmaat.'
   },
   {
     id: '75mm',
-    name: '75 mm (VEVOR JM-75 / 3")',
+    name: '75 mm (JM-75 • 75 mm Groene Lijn / 86 mm Stans)',
     category: 'metric',
     popular: true,
     faceDiameterMm: 75.0,
     cutDiameterMm: 86.0,
     bleedMm: 5.5,
-    press: 'VEVOR JM-75 Button Maker (Stansmaat / Cirkelsnijder: 86 mm)',
-    description: 'Exact afgestemd op de VEVOR JM-75 stans (86mm papiermaat, 75mm zichtbaar).'
+    press: 'VEVOR JM-75 Button Maker (Stans: 86 mm)',
+    description: '75 mm ontwerp op de groene lijn, 86 mm VEVOR stansmaat.'
+  },
+  {
+    id: '38mm-badgers',
+    name: '38 mm (Mad Badgers • 38 mm Design / 42 mm Bleed)',
+    category: 'metric',
+    popular: false,
+    faceDiameterMm: 38.0,
+    cutDiameterMm: 42.0,
+    bleedMm: 2.0,
+    press: '38 mm Badge Maker (Cirkelsnijder: 42 mm)',
+    description: 'The Mad Badgers standaard: 38 mm zichtbaar, 42 mm snijden.'
+  },
+  {
+    id: '58mm-badgers',
+    name: '58 mm (Mad Badgers • 58 mm Design / 62 mm Bleed)',
+    category: 'metric',
+    popular: false,
+    faceDiameterMm: 58.0,
+    cutDiameterMm: 62.0,
+    bleedMm: 2.0,
+    press: '58 mm Badge Maker (Cirkelsnijder: 62 mm)',
+    description: 'The Mad Badgers standaard: 58 mm zichtbaar, 62 mm snijden.'
   },
   {
     id: '25mm',
@@ -70,9 +92,9 @@ export const BUTTON_TEMPLATES = [
     name: 'Aangepaste maat (Custom)',
     category: 'custom',
     popular: false,
-    faceDiameterMm: 32.0,
+    faceDiameterMm: 36.0,
     cutDiameterMm: 44.0,
-    bleedMm: 6.0,
+    bleedMm: 4.0,
     press: 'Eigen instelling',
     description: 'Voer zelf de exacte millimeters of inches in.'
   }
