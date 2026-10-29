@@ -14,6 +14,7 @@ Commerciële websites zoals `buttonmaker.app` laten je maximaal 5 ontwerpen per 
 - 🆓 **100% Gratis voor altijd:** Geen downloadlimieten, geen watermerken, geen paywalls.
 - 🔒 **Volledige privacy:** Jouw foto's en ontwerpen worden lokaal in je browser verwerkt en verlaten nooit je apparaat.
 - 🖨️ **Exact op ware grootte (300 DPI PDF):** Download printklare PDF's op A4 of US Letter formaat die exact passen in je buttonpers of stans.
+- 🖼️ **Verschillende afbeeldingen op 1 vel:** Mix meerdere ontwerpen of upload een hele reeks foto's (bijv. 10 verschillende band- of familiefoto's) om ze samen op één pagina af te drukken.
 - ⚡ **Supersnel:** Geen laadtijden van servers, werkt direct op desktop, tablet en mobiel.
 
 ---

@@ -13,13 +13,25 @@ import {
   FlipVertical, 
   Sliders, 
   Check, 
-  Sparkles 
+  Sparkles,
+  Images,
+  Printer
 } from 'lucide-react';
 import { BUTTON_TEMPLATES, GOOGLE_FONTS } from '../constants/templates';
 import { BadgeMockup } from './BadgeMockup';
+import { generateHighResBadgeDataUrl } from '../utils/pdfGenerator';
 
-export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) {
+export function Sidebar({ 
+  badgeState, 
+  setBadgeState, 
+  activeTab, 
+  setActiveTab,
+  sheetQueue = [],
+  setSheetQueue,
+  onOpenPrintModal
+}) {
   const fileInputRef = useRef(null);
+  const batchInputRef = useRef(null);
 
   // Image Upload Handler
   const handleImageUpload = (file) => {
@@ -28,7 +40,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        // Calculate initial scale to fit face circle nicely
         const size = 800;
         const cutRadius = (size / 2) * 0.94;
         const faceRadius = cutRadius * (badgeState.template.faceDiameterMm / badgeState.template.cutDiameterMm);
@@ -52,12 +63,68 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
     reader.readAsDataURL(file);
   };
 
+  // Batch upload multiple images directly into sheet queue
+  const handleBatchUpload = (files) => {
+    if (!files || files.length === 0) return;
+    const fileList = Array.from(files);
+    let loaded = 0;
+    const newItems = [];
+
+    fileList.forEach((file, index) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const size = 800;
+          const cutRadius = (size / 2) * 0.94;
+          const targetDiam = cutRadius * 2;
+          const scale = targetDiam / Math.min(img.naturalWidth, img.naturalHeight);
+
+          const newBadge = {
+            ...badgeState,
+            image: img,
+            imageProps: {
+              x: 0,
+              y: 0,
+              scale: Number(scale.toFixed(2)),
+              rotation: 0,
+              flipX: false,
+              flipY: false,
+              brightness: 100,
+              contrast: 100,
+              grayscale: 0
+            },
+            textLayers: []
+          };
+
+          const thumbUrl = generateHighResBadgeDataUrl(newBadge, 260);
+
+          newItems.push({
+            id: `batch-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 4)}`,
+            name: file.name.replace(/\.[^/.]+$/, '').slice(0, 18),
+            badgeState: newBadge,
+            thumbUrl,
+            count: 1
+          });
+
+          loaded++;
+          if (loaded === fileList.length) {
+            setSheetQueue(prev => [...prev, ...newItems]);
+            if (onOpenPrintModal) onOpenPrintModal();
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   // Add new text layer
   const handleAddTextLayer = (style = 'straight') => {
     const newLayer = {
       id: Date.now().toString(),
       text: style === 'curved-top' ? 'BOVENSTE TEKST' : (style === 'curved-bottom' ? 'ONDERSTE TEKST' : 'JOUW TEKST'),
-      style: style, // 'straight', 'curved-top', 'curved-bottom'
+      style: style,
       fontFamily: "'Inter', sans-serif",
       fontSize: style === 'straight' ? 36 : 28,
       bold: true,
@@ -79,7 +146,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
     }));
   };
 
-  // Update specific text layer
   const updateTextLayer = (id, updates) => {
     setBadgeState(prev => ({
       ...prev,
@@ -87,7 +153,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
     }));
   };
 
-  // Delete text layer
   const deleteTextLayer = (id) => {
     setBadgeState(prev => ({
       ...prev,
@@ -95,7 +160,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
     }));
   };
 
-  // Quick background color presets
   const colorPresets = [
     '#ffffff', '#000000', '#ef4444', '#f97316', '#eab308', 
     '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'
@@ -276,6 +340,15 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
               onChange={e => handleImageUpload(e.target.files[0])}
             />
 
+            <input
+              type="file"
+              ref={batchInputRef}
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={e => handleBatchUpload(e.target.files)}
+            />
+
             {!badgeState.image ? (
               <div
                 onClick={() => fileInputRef.current?.click()}
@@ -410,7 +483,7 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
                   </button>
                 </div>
 
-                {/* Quick Filters */}
+                {/* Filters */}
                 <div className="space-y-3 pt-2 border-t border-slate-800">
                   <div className="font-semibold text-slate-300 flex items-center gap-1.5">
                     <Sliders className="w-3.5 h-3.5" />
@@ -482,6 +555,24 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
                 </div>
               </div>
             )}
+
+            {/* NEW: Multi-Image Batch Upload Box */}
+            <div className="p-3.5 bg-gradient-to-br from-emerald-950/40 to-slate-950/80 rounded-2xl border border-emerald-500/20 space-y-2.5">
+              <div className="flex items-center gap-2 text-white font-semibold">
+                <Images className="w-4 h-4 text-emerald-400" />
+                <span>Verschillende foto's op 1 vel?</span>
+              </div>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Wil je bijvoorbeeld 10 verschillende foto's (van een band, gezin of evenement) direct samen op één printblad zetten?
+              </p>
+              <button
+                onClick={() => batchInputRef.current?.click()}
+                className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 transition active:scale-95"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Selecteer Meerdere Foto's</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -495,7 +586,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
               </div>
             </div>
 
-            {/* Quick Add Buttons */}
             <div className="grid grid-cols-3 gap-1.5">
               <button
                 onClick={() => handleAddTextLayer('straight')}
@@ -517,7 +607,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
               </button>
             </div>
 
-            {/* Text Layers List */}
             {badgeState.textLayers.length === 0 ? (
               <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-6 text-center text-slate-500">
                 Geen tekstlagen toegevoegd. Klik op een knop hierboven om tekst toe te voegen.
@@ -541,7 +630,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
                       </button>
                     </div>
 
-                    {/* Text Input */}
                     <input
                       type="text"
                       value={layer.text}
@@ -550,7 +638,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
                       placeholder="Tekst typen..."
                     />
 
-                    {/* Font Selector */}
                     <div>
                       <label className="block text-[11px] text-slate-400 mb-1">Lettertype</label>
                       <select
@@ -564,7 +651,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
                       </select>
                     </div>
 
-                    {/* Font Size & Spacing */}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <div className="flex justify-between text-[11px] text-slate-400 mb-0.5">
@@ -597,7 +683,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
                       </div>
                     </div>
 
-                    {/* Text Color & Outline */}
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <div>
                         <label className="block text-[11px] text-slate-400 mb-1">Tekstkleur</label>
@@ -648,7 +733,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
               <p className="text-[11px] text-slate-400">Kies een effen kleur, verloop of transparant.</p>
             </div>
 
-            {/* Type selector */}
             <div className="grid grid-cols-3 gap-1.5">
               <button
                 onClick={() => setBadgeState(prev => ({ ...prev, backgroundType: 'solid' }))}
@@ -684,7 +768,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
 
             {badgeState.backgroundType !== 'transparent' && (
               <div className="space-y-4 pt-2">
-                {/* Color presets */}
                 <div>
                   <label className="block text-slate-400 mb-1.5">Snelle Kleuren</label>
                   <div className="flex flex-wrap gap-2">
@@ -699,7 +782,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
                   </div>
                 </div>
 
-                {/* Primary Color Picker */}
                 <div className="flex items-center gap-3">
                   <input
                     type="color"
@@ -715,7 +797,6 @@ export function Sidebar({ badgeState, setBadgeState, activeTab, setActiveTab }) 
                   </div>
                 </div>
 
-                {/* Gradient Second Color & Direction */}
                 {badgeState.backgroundType === 'gradient' && (
                   <div className="space-y-3 pt-2 border-t border-slate-800">
                     <div className="flex items-center gap-3">

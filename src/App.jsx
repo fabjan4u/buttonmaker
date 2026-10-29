@@ -4,7 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { CanvasEditor } from './components/CanvasEditor';
 import { PrintSheetModal } from './components/PrintSheetModal';
 import { BUTTON_TEMPLATES } from './constants/templates';
-import { downloadSinglePng } from './utils/pdfGenerator';
+import { downloadSinglePng, generateHighResBadgeDataUrl } from './utils/pdfGenerator';
 
 const DEFAULT_STATE = {
   template: BUTTON_TEMPLATES[0], // 58mm (2.25")
@@ -91,6 +91,15 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('template');
   const [is3D, setIs3D] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  
+  // Sheet queue for multiple different images/designs on 1 print sheet
+  const [sheetQueue, setSheetQueue] = useState([]);
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   const handleReset = () => {
     if (window.confirm('Weet je zeker dat je het ontwerp wilt herstellen naar de beginstand?')) {
@@ -106,8 +115,34 @@ export default function App() {
     );
   };
 
+  const handleAddToSheet = () => {
+    const thumbUrl = generateHighResBadgeDataUrl(badgeState, 260);
+    const newItem = {
+      id: 'item-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      name: `Ontwerp #${sheetQueue.length + 1}`,
+      badgeState: { ...badgeState },
+      thumbUrl,
+      count: 1
+    };
+    setSheetQueue(prev => [...prev, newItem]);
+    showToast(`✓ Ontwerp toegevoegd aan printvel (${sheetQueue.length + 1} items)`);
+  };
+
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-slate-900 text-slate-100">
+    <div className="flex flex-col h-screen overflow-hidden bg-slate-900 text-slate-100 relative">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-emerald-500 text-white font-semibold text-xs px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 animate-bounce">
+          <span>{toastMessage}</span>
+          <button
+            onClick={() => setIsPrintModalOpen(true)}
+            className="underline ml-1 hover:text-emerald-100"
+          >
+            Bekijk vel →
+          </button>
+        </div>
+      )}
+
       {/* Top Navigation */}
       <Navbar
         template={badgeState.template}
@@ -116,6 +151,8 @@ export default function App() {
         onReset={handleReset}
         is3D={is3D}
         setIs3D={setIs3D}
+        onAddToSheet={handleAddToSheet}
+        sheetItemCount={sheetQueue.reduce((acc, item) => acc + item.count, 0)}
       />
 
       {/* Main Workspace (Sidebar + Canvas) */}
@@ -125,6 +162,9 @@ export default function App() {
           setBadgeState={setBadgeState}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+          sheetQueue={sheetQueue}
+          setSheetQueue={setSheetQueue}
+          onOpenPrintModal={() => setIsPrintModalOpen(true)}
         />
 
         <CanvasEditor
@@ -134,11 +174,13 @@ export default function App() {
         />
       </div>
 
-      {/* Print Sheet Modal */}
+      {/* Print Sheet Modal (Supports Single & Multi-design) */}
       <PrintSheetModal
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
         badgeState={badgeState}
+        sheetQueue={sheetQueue}
+        setSheetQueue={setSheetQueue}
       />
     </div>
   );

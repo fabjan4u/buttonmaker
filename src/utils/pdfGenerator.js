@@ -35,7 +35,7 @@ export function calculateSheetGrid(paper, template, options = {}) {
 }
 
 /**
- * Generates an ultra high-res (300 DPI) raster image of the badge
+ * Generates an ultra high-res (300 DPI) raster image of a badge
  */
 export function generateHighResBadgeDataUrl(badgeOptions, resolutionPx = 1000) {
   const canvas = document.createElement('canvas');
@@ -47,7 +47,7 @@ export function generateHighResBadgeDataUrl(badgeOptions, resolutionPx = 1000) {
     ...badgeOptions,
     width: resolutionPx,
     height: resolutionPx,
-    showGuides: false, // Print version has clean artwork with vector cut lines
+    showGuides: false,
     is3DPreview: false
   });
 
@@ -56,21 +56,45 @@ export function generateHighResBadgeDataUrl(badgeOptions, resolutionPx = 1000) {
 
 /**
  * Generates and downloads a print-ready 300 DPI PDF sheet on 100% true physical scale
+ * Supports BOTH single-design repetition AND multi-design batch sheets (with multi-page support!)
  */
 export async function generatePrintPdf(options) {
   const {
     paper,
     template,
-    badgeState,
-    buttonCount = 'fill', // 'fill' or specific number
+    badgeState, // fallback for single mode
+    badgeList = [], // array of { badgeState, count } or array of badgeState
+    mode = 'single', // 'single' or 'multi'
+    buttonCount = 'fill', // for single mode
     drawCutLine = true,
-    cutLineStyle = 'dashed', // 'dashed', 'solid', 'none'
+    cutLineStyle = 'dashed',
     drawCenterMark = true,
     includeCalibration = true
   } = options;
 
   const grid = calculateSheetGrid(paper, template);
-  const count = buttonCount === 'fill' ? grid.maxButtonsPerPage : Math.min(buttonCount, grid.maxButtonsPerPage);
+
+  // Flatten badge list to an ordered array of individual badge states
+  let flatBadges = [];
+  if (mode === 'multi' && badgeList.length > 0) {
+    badgeList.forEach(item => {
+      const bState = item.badgeState || item;
+      const count = item.count || 1;
+      for (let i = 0; i < count; i++) {
+        flatBadges.push(bState);
+      }
+    });
+  } else {
+    // Single design mode
+    const count = buttonCount === 'fill' ? grid.maxButtonsPerPage : Math.min(buttonCount, grid.maxButtonsPerPage);
+    for (let i = 0; i < count; i++) {
+      flatBadges.push(badgeState);
+    }
+  }
+
+  if (flatBadges.length === 0) {
+    flatBadges.push(badgeState);
+  }
 
   // Initialize jsPDF in millimeters
   const doc = new jsPDF({
@@ -79,103 +103,120 @@ export async function generatePrintPdf(options) {
     format: [paper.widthMm, paper.heightMm]
   });
 
-  // Render high-res badge artwork once to dataURL
-  // 300 DPI calculation: diamMm * (300 / 25.4)
+  // Cache rendered high-res image data URLs by badge state reference or hash
+  const imageCache = new Map();
   const renderResolution = Math.min(1600, Math.max(800, Math.round(template.cutDiameterMm * 12)));
-  const badgeImgData = generateHighResBadgeDataUrl(badgeState, renderResolution);
 
+  const totalPages = Math.ceil(flatBadges.length / grid.maxButtonsPerPage);
   const rMm = template.cutDiameterMm / 2;
 
-  // Place badges according to grid
-  let placed = 0;
-  for (let r = 0; r < grid.rows; r++) {
-    for (let c = 0; c < grid.cols; c++) {
-      if (placed >= count) break;
+  let badgeIndex = 0;
 
-      const badgeX = grid.startX + c * (grid.cutDiam + grid.gapMm);
-      const badgeY = grid.startY + r * (grid.cutDiam + grid.gapMm);
-      const centerX = badgeX + rMm;
-      const centerY = badgeY + rMm;
+  for (let page = 0; page < totalPages; page++) {
+    if (page > 0) {
+      doc.addPage([paper.widthMm, paper.heightMm], paper.widthMm > paper.heightMm ? 'landscape' : 'portrait');
+    }
 
-      // Add high-res raster artwork
-      doc.addImage(
-        badgeImgData,
-        'PNG',
-        badgeX,
-        badgeY,
-        template.cutDiameterMm,
-        template.cutDiameterMm,
-        `badge-${placed}`,
-        'FAST'
-      );
+    let placedInPage = 0;
+    for (let r = 0; r < grid.rows; r++) {
+      for (let c = 0; c < grid.cols; c++) {
+        if (badgeIndex >= flatBadges.length) break;
 
-      // Draw vector cut guide around the badge
-      if (drawCutLine && cutLineStyle !== 'none') {
-        doc.saveGraphicsState();
-        doc.setDrawColor(180, 180, 180); // light gray cut line so it doesn't show if cut slightly off
-        doc.setLineWidth(0.18);
+        const currentBadge = flatBadges[badgeIndex];
+        const badgeX = grid.startX + c * (grid.cutDiam + grid.gapMm);
+        const badgeY = grid.startY + r * (grid.cutDiam + grid.gapMm);
+        const centerX = badgeX + rMm;
+        const centerY = badgeY + rMm;
 
-        if (cutLineStyle === 'dashed') {
-          doc.setLineDashPattern([1.5, 1.5], 0);
-        } else {
-          doc.setLineDashPattern([], 0);
+        // Get or generate high-res raster image
+        let imgData = imageCache.get(currentBadge);
+        if (!imgData) {
+          imgData = generateHighResBadgeDataUrl(currentBadge, renderResolution);
+          imageCache.set(currentBadge, imgData);
         }
 
-        doc.circle(centerX, centerY, rMm, 'S');
-        doc.restoreGraphicsState();
-      }
+        // Add high-res raster artwork
+        doc.addImage(
+          imgData,
+          'PNG',
+          badgeX,
+          badgeY,
+          template.cutDiameterMm,
+          template.cutDiameterMm,
+          `badge-img-${page}-${badgeIndex}`,
+          'FAST'
+        );
 
-      // Draw subtle rotary punch alignment center crossmark
-      if (drawCenterMark) {
-        doc.saveGraphicsState();
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.1);
-        const crossSize = 1.2; // mm
-        doc.line(centerX - crossSize, centerY, centerX + crossSize, centerY);
-        doc.line(centerX, centerY - crossSize, centerX, centerY + crossSize);
-        doc.restoreGraphicsState();
-      }
+        // Draw vector cut guide around the badge
+        if (drawCutLine && cutLineStyle !== 'none') {
+          doc.saveGraphicsState();
+          doc.setDrawColor(180, 180, 180);
+          doc.setLineWidth(0.18);
 
-      placed++;
+          if (cutLineStyle === 'dashed') {
+            doc.setLineDashPattern([1.5, 1.5], 0);
+          } else {
+            doc.setLineDashPattern([], 0);
+          }
+
+          doc.circle(centerX, centerY, rMm, 'S');
+          doc.restoreGraphicsState();
+        }
+
+        // Draw rotary punch alignment center crossmark
+        if (drawCenterMark) {
+          doc.saveGraphicsState();
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.1);
+          const crossSize = 1.2;
+          doc.line(centerX - crossSize, centerY, centerX + crossSize, centerY);
+          doc.line(centerX, centerY - crossSize, centerX, centerY + crossSize);
+          doc.restoreGraphicsState();
+        }
+
+        badgeIndex++;
+        placedInPage++;
+      }
+      if (badgeIndex >= flatBadges.length) break;
+    }
+
+    // Header / Metadata at top of page
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    const pageLabel = totalPages > 1 ? ` (Pagina ${page + 1} van ${totalPages})` : '';
+    doc.text(
+      `ButtonMaker • Formaat: ${template.name} (Snijmaat: ${template.cutDiameterMm}mm / Gezicht: ${template.faceDiameterMm}mm) • Totaal: ${flatBadges.length} buttons${pageLabel}`,
+      paper.marginMm,
+      paper.marginMm + 2
+    );
+
+    // Calibration test bar and printer instructions at bottom of page
+    if (includeCalibration) {
+      const bottomY = paper.heightMm - paper.marginMm - 4;
+
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 100, 100);
+      doc.text(
+        '⚠️ Belangrijk: Print op 100% / Schaal: Geen (Actual Size / Do not scale)',
+        paper.marginMm,
+        bottomY - 4
+      );
+
+      // 50mm Calibration bar
+      const calStartX = paper.widthMm - paper.marginMm - 50;
+      doc.setDrawColor(80, 80, 80);
+      doc.setLineWidth(0.4);
+      doc.line(calStartX, bottomY, calStartX + 50, bottomY);
+      doc.line(calStartX, bottomY - 1.5, calStartX, bottomY + 1.5);
+      doc.line(calStartX + 50, bottomY - 1.5, calStartX + 50, bottomY + 1.5);
+
+      doc.text('50 mm kalibratie meetlat (controleer met liniaal)', calStartX - 60, bottomY + 1);
     }
   }
 
-  // Header / Metadata at top
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(120, 120, 120);
-  doc.text(
-    `ButtonMaker • Formaat: ${template.name} (Snijmaat: ${template.cutDiameterMm}mm / Gezicht: ${template.faceDiameterMm}mm) • Aantal: ${placed}`,
-    paper.marginMm,
-    paper.marginMm + 2
-  );
-
-  // Calibration test bar and printer instructions at bottom
-  if (includeCalibration) {
-    const bottomY = paper.heightMm - paper.marginMm - 4;
-
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 100, 100);
-    doc.text(
-      '⚠️ Belangrijk: Print op 100% / Schaal: Geen (Actual Size / Do not scale)',
-      paper.marginMm,
-      bottomY - 4
-    );
-
-    // 50mm Calibration bar
-    const calStartX = paper.widthMm - paper.marginMm - 50;
-    doc.setDrawColor(80, 80, 80);
-    doc.setLineWidth(0.4);
-    doc.line(calStartX, bottomY, calStartX + 50, bottomY);
-    // Tick marks at 0 and 50mm
-    doc.line(calStartX, bottomY - 1.5, calStartX, bottomY + 1.5);
-    doc.line(calStartX + 50, bottomY - 1.5, calStartX + 50, bottomY + 1.5);
-
-    doc.text('50 mm kalibratie meetlat (controleer met liniaal)', calStartX - 60, bottomY + 1);
-  }
-
   // Save the PDF
-  const filename = `buttons-${template.id}-${placed}stuks-${paper.id}.pdf`;
+  const filename = `buttons-${template.id}-${flatBadges.length}stuks-${paper.id}.pdf`;
   doc.save(filename);
 }
 
