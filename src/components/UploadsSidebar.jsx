@@ -1,10 +1,11 @@
 import React, { useRef } from 'react';
-import { Upload, Trash2, Zap, Images, Plus, Info } from 'lucide-react';
+import { Upload, Trash2, Zap, Images, Plus, Info, Scissors } from 'lucide-react';
 
 export function UploadsSidebar({
   uploadedImages,
   onUploadFiles,
   onDeleteUploadedImage,
+  onCropImage,
   onClearAllUploads,
   onAutoFillSheet,
   onClearSheet,
@@ -106,7 +107,9 @@ export function UploadsSidebar({
                 onDragStart={(e) => {
                   e.dataTransfer.setData('text/plain', imgItem.id);
                 }}
+                onDoubleClick={() => onCropImage && onCropImage(imgItem)}
                 className="group relative aspect-square rounded-xl overflow-hidden bg-slate-950 border border-slate-800 hover:border-emerald-500 shadow-sm transition cursor-grab active:cursor-grabbing hover:scale-[1.02]"
+                title="Dubbelklik om bij te snijden • Sleep naar een cirkel"
               >
                 <img
                   src={imgItem.url}
@@ -124,17 +127,32 @@ export function UploadsSidebar({
                   </span>
                 </div>
 
-                {/* Delete button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteUploadedImage(imgItem.id);
-                  }}
-                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow"
-                  title="Verwijder uit galerij"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+                {/* Action buttons on hover */}
+                <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                  {onCropImage && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCropImage(imgItem);
+                      }}
+                      className="w-6 h-6 rounded-full bg-black/60 hover:bg-amber-600 text-white flex items-center justify-center transition shadow"
+                      title="Foto bijsnijden naar cirkel (Crop)"
+                    >
+                      <Scissors className="w-3 h-3" />
+                    </button>
+                  )}
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteUploadedImage(imgItem.id);
+                    }}
+                    className="w-6 h-6 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition shadow"
+                    title="Verwijder uit galerij"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

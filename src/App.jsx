@@ -3,6 +3,7 @@ import { Navbar } from './components/Navbar';
 import { UploadsSidebar } from './components/UploadsSidebar';
 import { SheetWorkspace } from './components/SheetWorkspace';
 import { BadgeEditorModal } from './components/BadgeEditorModal';
+import { CropModal } from './components/CropModal';
 import { BUTTON_TEMPLATES, PAPER_FORMATS } from './constants/templates';
 import { calculateSheetGrid, generatePrintPdf } from './utils/pdfGenerator';
 
@@ -11,6 +12,8 @@ export default function App() {
   const [paper, setPaper] = useState(PAPER_FORMATS[0]); // A4
   const [uploadedImages, setUploadedImages] = useState([]);
   const [editingSlotIndex, setEditingSlotIndex] = useState(null);
+  const [croppingSlotIndex, setCroppingSlotIndex] = useState(null);
+  const [galleryCropItem, setGalleryCropItem] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [toastMessage, setToastMessage] = useState(null);
@@ -116,13 +119,8 @@ export default function App() {
     setCurrentPage(0);
   }, [slotsPerPage]);
 
-  // Helper to construct a badge from an HTMLImageElement
+  // Helper to construct a badge from an HTMLImageElement (Direct Cover Crop)
   const createBadgeFromImage = (imgElement, name = '') => {
-    const size = 640;
-    const cutRadius = (size / 2) * 0.94;
-    const targetDiam = cutRadius * 2;
-    const scale = targetDiam / Math.min(imgElement.naturalWidth, imgElement.naturalHeight);
-
     return {
       id: 'badge-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       name: name,
@@ -130,7 +128,7 @@ export default function App() {
       imageProps: {
         x: 0,
         y: 0,
-        scale: Number(scale.toFixed(2)),
+        scale: 1.0, // 1.0 = automatic cover crop to cut circle
         rotation: 0,
         flipX: false,
         flipY: false,
@@ -347,6 +345,52 @@ export default function App() {
     showToast('✓ Tekst & stijl toegepast op alle buttons!');
   };
 
+  // Apply cropped image to a specific slot
+  const handleApplyCrop = (slotIndex, croppedImg, croppedDataUrl) => {
+    setBadges(prev => {
+      const copy = [...prev];
+      if (copy[slotIndex]) {
+        copy[slotIndex] = {
+          ...copy[slotIndex],
+          image: croppedImg,
+          imageProps: {
+            ...copy[slotIndex].imageProps,
+            x: 0,
+            y: 0,
+            scale: 1.0,
+            rotation: 0
+          }
+        };
+      }
+      return copy;
+    });
+    showToast('✓ Foto direct bijgesneden naar het juiste formaat!');
+  };
+
+  // Apply crop to a gallery item and any slots currently using it
+  const handleApplyGalleryCrop = (item, croppedImg, croppedDataUrl) => {
+    setUploadedImages(prev => prev.map(u => {
+      if (u.id === item.id) {
+        return { ...u, url: croppedDataUrl, imgElement: croppedImg };
+      }
+      return u;
+    }));
+
+    setBadges(prev => prev.map(b => {
+      if (b && b.image && b.image.src === item.imgElement.src) {
+        return {
+          ...b,
+          image: croppedImg,
+          imageProps: { ...b.imageProps, x: 0, y: 0, scale: 1.0, rotation: 0 }
+        };
+      }
+      return b;
+    }));
+
+    setGalleryCropItem(null);
+    showToast('✓ Galerijfoto direct bijgesneden!');
+  };
+
   // Download Print PDF
   const handleDownloadPdf = async () => {
     try {
@@ -400,6 +444,7 @@ export default function App() {
           uploadedImages={uploadedImages}
           onUploadFiles={handleUploadFiles}
           onDeleteUploadedImage={(id) => setUploadedImages(prev => prev.filter(i => i.id !== id))}
+          onCropImage={(item) => setGalleryCropItem(item)}
           onClearAllUploads={() => setUploadedImages([])}
           onAutoFillSheet={handleAutoFillSheet}
           onClearSheet={() => setBadges(Array(slotsPerPage).fill(null))}
@@ -415,7 +460,7 @@ export default function App() {
           onAddPage={handleAddPage}
           onDropImage={handleDropImage}
           onOpenTextEditor={(idx) => setEditingSlotIndex(idx)}
-          onOpenImageEditor={(idx) => setEditingSlotIndex(idx)}
+          onOpenCropModal={(idx) => setCroppingSlotIndex(idx)}
           onDuplicateToAll={handleDuplicateToAll}
           onClearSlot={handleClearSlot}
           onQuickUpload={handleQuickUpload}
@@ -431,8 +476,33 @@ export default function App() {
           slotIndex={editingSlotIndex}
           badgeState={badges[editingSlotIndex]}
           template={template}
+          initialTab="text"
           onSaveSlot={handleSaveSlot}
           onSaveAllSlots={handleSaveAllSlots}
+        />
+      )}
+
+      {/* Dedicated Cropper Modal for Badge Slot (Matching badgemakersmall.html) */}
+      {croppingSlotIndex !== null && badges[croppingSlotIndex] && (
+        <CropModal
+          isOpen={croppingSlotIndex !== null}
+          onClose={() => setCroppingSlotIndex(null)}
+          slotIndex={croppingSlotIndex}
+          badgeState={badges[croppingSlotIndex]}
+          template={template}
+          onApplyCrop={handleApplyCrop}
+        />
+      )}
+
+      {/* Dedicated Cropper Modal for Gallery Item */}
+      {galleryCropItem && (
+        <CropModal
+          isOpen={galleryCropItem !== null}
+          onClose={() => setGalleryCropItem(null)}
+          slotIndex={0}
+          badgeState={{ image: galleryCropItem.imgElement }}
+          template={template}
+          onApplyCrop={(_, croppedImg, croppedDataUrl) => handleApplyGalleryCrop(galleryCropItem, croppedImg, croppedDataUrl)}
         />
       )}
     </div>

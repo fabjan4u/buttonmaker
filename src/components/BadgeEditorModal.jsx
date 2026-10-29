@@ -28,13 +28,14 @@ export function BadgeEditorModal({
   slotIndex,
   badgeState,
   template,
+  initialTab = 'text',
   onSaveSlot,
   onSaveAllSlots
 }) {
   if (!isOpen || !badgeState) return null;
 
   const [localBadge, setLocalBadge] = useState({ ...badgeState });
-  const [activeTab, setActiveTab] = useState('text'); // 'text', 'image', 'background'
+  const [activeTab, setActiveTab] = useState(initialTab); // 'text', 'image', 'background'
   const canvasRef = useRef(null);
   const replaceFileInputRef = useRef(null);
 
@@ -46,7 +47,8 @@ export function BadgeEditorModal({
   // Update local state when badgeState changes
   useEffect(() => {
     setLocalBadge({ ...badgeState });
-  }, [badgeState]);
+    setActiveTab(initialTab);
+  }, [badgeState, initialTab]);
 
   // Re-render editor canvas whenever localBadge changes
   useEffect(() => {
@@ -84,14 +86,17 @@ export function BadgeEditorModal({
     const dy = e.clientY - dragStart.y;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const scaleFactor = 640 / canvas.clientWidth;
+    const displaySize = canvas.clientWidth || 360;
+    // Percentage shift (-50 to +50 percent)
+    const deltaPercentX = (dx / displaySize) * 100;
+    const deltaPercentY = (dy / displaySize) * 100;
 
     setLocalBadge(prev => ({
       ...prev,
       imageProps: {
         ...prev.imageProps,
-        x: Math.round(initialPos.x + dx * scaleFactor),
-        y: Math.round(initialPos.y + dy * scaleFactor)
+        x: Math.round(initialPos.x + deltaPercentX),
+        y: Math.round(initialPos.y + deltaPercentY)
       }
     }));
   };
@@ -117,29 +122,22 @@ export function BadgeEditorModal({
   const handleFitToFace = () => {
     if (!localBadge.image) return;
     const img = localBadge.image;
-    const size = 640;
-    const cutRadius = (size / 2) * 0.94;
-    const faceRadius = cutRadius * (template.faceDiameterMm / template.cutDiameterMm);
-    const targetDiam = faceRadius * 2;
-    const scale = targetDiam / Math.max(img.naturalWidth, img.naturalHeight);
+    const faceRatio = template.faceDiameterMm / template.cutDiameterMm;
+    const minDim = Math.min(img.naturalWidth, img.naturalHeight);
+    const maxDim = Math.max(img.naturalWidth, img.naturalHeight);
+    const targetScale = faceRatio * (minDim / maxDim);
 
     setLocalBadge(prev => ({
       ...prev,
-      imageProps: { ...prev.imageProps, x: 0, y: 0, scale: Number(scale.toFixed(2)) }
+      imageProps: { ...prev.imageProps, x: 0, y: 0, scale: Number(targetScale.toFixed(2)) }
     }));
   };
 
   const handleFillCutCircle = () => {
     if (!localBadge.image) return;
-    const img = localBadge.image;
-    const size = 640;
-    const cutRadius = (size / 2) * 0.94;
-    const targetDiam = cutRadius * 2;
-    const scale = targetDiam / Math.min(img.naturalWidth, img.naturalHeight);
-
     setLocalBadge(prev => ({
       ...prev,
-      imageProps: { ...prev.imageProps, x: 0, y: 0, scale: Number(scale.toFixed(2)) }
+      imageProps: { ...prev.imageProps, x: 0, y: 0, scale: 1.0 }
     }));
   };
 
@@ -150,11 +148,6 @@ export function BadgeEditorModal({
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const size = 640;
-        const cutRadius = (size / 2) * 0.94;
-        const targetDiam = cutRadius * 2;
-        const scale = targetDiam / Math.min(img.naturalWidth, img.naturalHeight);
-
         setLocalBadge(prev => ({
           ...prev,
           image: img,
@@ -163,7 +156,7 @@ export function BadgeEditorModal({
             ...prev.imageProps,
             x: 0,
             y: 0,
-            scale: Number(scale.toFixed(2)),
+            scale: 1.0,
             rotation: 0
           }
         }));

@@ -8,7 +8,7 @@ export function BadgeSlot({
   template,
   onDropImage,
   onOpenTextEditor,
-  onOpenImageEditor,
+  onOpenCropModal,
   onDuplicateToAll,
   onClearSlot,
   onQuickUpload,
@@ -141,11 +141,11 @@ export function BadgeSlot({
                 <Type className="w-4 h-4" />
               </button>
 
-              {/* Image Adjust / Crop Button */}
+              {/* Image Adjust / Crop Button (Dedicated Modal like badgemakersmall) */}
               <button
-                onClick={() => onOpenImageEditor(index)}
-                className="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 text-white flex items-center justify-center shadow-lg transition active:scale-95"
-                title="Afbeelding schalen, roteren & centreren"
+                onClick={() => onOpenCropModal(index)}
+                className="w-8 h-8 rounded-full bg-amber-600 hover:bg-amber-500 text-white flex items-center justify-center shadow-lg transition active:scale-95"
+                title="Foto direct bijsnijden & kader kiezen (Crop)"
               >
                 <Scissors className="w-3.5 h-3.5" />
               </button>

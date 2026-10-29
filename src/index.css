@@ -46,3 +46,31 @@ input[type="range"] {
   background-size: 16px 16px;
   background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
 }
+
+/* Circular Badge Cropper Styling */
+.badge-cropper-wrapper .cropper-view-box {
+  border-radius: 50%;
+  outline: 2px dashed #f43f5e;
+  outline-color: #f43f5e;
+}
+
+.badge-cropper-wrapper .cropper-face {
+  border-radius: 50%;
+  background-color: transparent;
+}
+
+/* Inner Face Guide Ring on Cropper */
+.badge-cropper-wrapper .cropper-view-box::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--face-ratio, 72.7%);
+  height: var(--face-ratio, 72.7%);
+  border-radius: 50%;
+  border: 2px dashed #10b981;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.25);
+}
+

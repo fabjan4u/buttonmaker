@@ -1,6 +1,6 @@
 /**
  * Canvas Rendering Engine for ButtonMaker
- * Handles high-resolution rendering, layers, curved text, and print guides.
+ * Handles high-resolution rendering, layers, curved text, auto cover-crop, and print guides.
  */
 
 export function renderButtonCanvas(ctx, options) {
@@ -20,6 +20,7 @@ export function renderButtonCanvas(ctx, options) {
     showCutGuide = true,
     showBleedShade = true,
     is3DPreview = false,
+    usePadding = false,
   } = options;
 
   const size = Math.min(width, height);
@@ -27,7 +28,10 @@ export function renderButtonCanvas(ctx, options) {
   const cy = height / 2;
 
   // Exact relative radii based on physical button specifications
-  const cutRadius = (size / 2) * 0.94; // slight padding inside canvas box
+  // When printing (showGuides === false) or rendering in a round slot, cutRadius is exactly size / 2.
+  // Slight padding is only used if explicitly requested (e.g. editor modal preview)
+  const paddingRatio = usePadding ? 0.04 : 0;
+  const cutRadius = (size / 2) * (1 - paddingRatio);
   const faceRadius = cutRadius * (template.faceDiameterMm / template.cutDiameterMm);
 
   // Clear canvas
@@ -36,13 +40,13 @@ export function renderButtonCanvas(ctx, options) {
   // Save base state
   ctx.save();
 
-  // If rendering for 3D preview or clipped export, clip to cut circle
+  // If rendering for 3D preview, clip to face circle
   if (is3DPreview) {
     ctx.beginPath();
     ctx.arc(cx, cy, faceRadius, 0, Math.PI * 2);
     ctx.clip();
   } else {
-    // Normal editor / print canvas: clip to cut circle so artwork doesn't bleed outside the cut zone
+    // Normal editor / print canvas: clip to exact cut circle
     ctx.beginPath();
     ctx.arc(cx, cy, cutRadius, 0, Math.PI * 2);
     ctx.clip();
@@ -67,36 +71,71 @@ export function renderButtonCanvas(ctx, options) {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
   }
-  // if 'transparent', background remains cleared (for transparent PNG badges)
 
-  // 2. Render Image Layer
+  // 2. Render Image Layer (Direct Cover-Crop to Circle)
   if (image && image.complete && image.naturalWidth > 0) {
     ctx.save();
-    ctx.translate(cx + imageProps.x, cy + imageProps.y);
-    ctx.rotate((imageProps.rotation * Math.PI) / 180);
+
+    const imgW = image.naturalWidth;
+    const imgH = image.naturalHeight;
+    const minDim = Math.min(imgW, imgH);
+    const targetDiam = cutRadius * 2;
+
+    // Automatic cover scale: makes the smaller dimension fill the badge cut circle 100%
+    const coverScale = targetDiam / minDim;
+
+    // User zoom factor (default 1.0 = exact cover fit)
+    const rawScale = typeof imageProps.scale === 'number' && imageProps.scale > 0 ? imageProps.scale : 1.0;
+    // Handle any legacy sub-0.3 scale values from old 640px base math gracefully
+    const userScale = (rawScale < 0.35 && minDim > 600) ? 1.0 : rawScale;
+    const finalScale = coverScale * userScale;
+
+    // Offset: normalized percentage (-50 to +50 percent of diameter)
+    let offsetX = 0;
+    let offsetY = 0;
+    if (typeof imageProps.x === 'number') {
+      if (Math.abs(imageProps.x) <= 100) {
+        offsetX = (imageProps.x / 100) * targetDiam;
+      } else {
+        offsetX = (imageProps.x / 640) * targetDiam;
+      }
+    }
+    if (typeof imageProps.y === 'number') {
+      if (Math.abs(imageProps.y) <= 100) {
+        offsetY = (imageProps.y / 100) * targetDiam;
+      } else {
+        offsetY = (imageProps.y / 640) * targetDiam;
+      }
+    }
+
+    ctx.translate(cx + offsetX, cy + offsetY);
+    ctx.rotate(((imageProps.rotation || 0) * Math.PI) / 180);
     ctx.scale(
-      (imageProps.flipX ? -1 : 1) * imageProps.scale,
-      (imageProps.flipY ? -1 : 1) * imageProps.scale
+      (imageProps.flipX ? -1 : 1) * finalScale,
+      (imageProps.flipY ? -1 : 1) * finalScale
     );
 
     // Apply filters if needed
-    if (imageProps.brightness !== 100 || imageProps.contrast !== 100 || imageProps.grayscale > 0) {
-      ctx.filter = `brightness(${imageProps.brightness}%) contrast(${imageProps.contrast}%) grayscale(${imageProps.grayscale}%)`;
+    if (imageProps.brightness !== 100 || imageProps.contrast !== 100 || (imageProps.grayscale || 0) > 0) {
+      const b = imageProps.brightness ?? 100;
+      const c = imageProps.contrast ?? 100;
+      const g = imageProps.grayscale ?? 0;
+      ctx.filter = `brightness(${b}%) contrast(${c}%) grayscale(${g}%)`;
     }
 
     // Draw image centered at origin
-    const imgW = image.naturalWidth;
-    const imgH = image.naturalHeight;
     ctx.drawImage(image, -imgW / 2, -imgH / 2, imgW, imgH);
     ctx.restore();
   }
 
-  // 3. Render Text Layers
+  // 3. Render Text Layers (Resolution Independent via fontScale relative to 640px editor base)
+  const fontScale = size / 640;
+
   textLayers.forEach(layer => {
     if (!layer.text || !layer.text.trim()) return;
 
     ctx.save();
-    const fontSize = layer.fontSize || 32;
+    const fontSize = Math.max(8, Math.round((layer.fontSize || 32) * fontScale));
     const fontFamily = layer.fontFamily || "'Inter', sans-serif";
     const fontWeight = layer.bold ? 'bold' : 'normal';
     const fontStyle = layer.italic ? 'italic' : 'normal';
@@ -106,16 +145,15 @@ export function renderButtonCanvas(ctx, options) {
 
     const fillStyle = layer.color || '#ffffff';
     const strokeStyle = layer.strokeColor || '#000000';
-    const hasStroke = layer.hasStroke && layer.strokeWidth > 0;
-    const strokeWidth = layer.strokeWidth || 3;
+    const hasStroke = layer.hasStroke && (layer.strokeWidth || 3) > 0;
+    const strokeWidth = (layer.strokeWidth || 3) * fontScale;
 
     if (layer.style === 'curved-top' || layer.style === 'curved-bottom') {
-      // Curved text along circular arc!
-      // Radius of text arc: usually around 75% to 85% of face radius
+      // Curved text along circular arc
       const textRadius = faceRadius * (layer.curveRadiusRatio || 0.78);
       drawCurvedText(ctx, layer.text, cx, cy, textRadius, {
         isBottom: layer.style === 'curved-bottom',
-        letterSpacing: layer.letterSpacing || 2,
+        letterSpacing: (layer.letterSpacing || 2) * fontScale,
         fillStyle,
         strokeStyle,
         hasStroke,
@@ -124,7 +162,9 @@ export function renderButtonCanvas(ctx, options) {
       });
     } else {
       // Straight text
-      ctx.translate(cx + (layer.x || 0), cy + (layer.y || 0));
+      const tx = (layer.x || 0) * fontScale;
+      const ty = (layer.y || 0) * fontScale;
+      ctx.translate(cx + tx, cy + ty);
       ctx.rotate(((layer.rotationDeg || 0) * Math.PI) / 180);
 
       const lines = layer.text.split('\n');
@@ -143,21 +183,22 @@ export function renderButtonCanvas(ctx, options) {
         ctx.fillText(line, 0, lineY);
       });
     }
+
     ctx.restore();
   });
 
-  // Restore clipping
+  // Restore base clip
   ctx.restore();
 
-  // 4. Render Bleed Shading & Guides (Editor Mode only)
+  // 4. Render Visual Alignment Guides
   if (showGuides && !is3DPreview) {
-    // Bleed shaded ring (the fold-over area that wraps around the shell)
+    // Bleed Shade Area (the fold-over area that wraps around the shell)
     if (showBleedShade) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(cx, cy, cutRadius, 0, Math.PI * 2);
       ctx.arc(cx, cy, faceRadius, 0, Math.PI * 2, true); // counter-clockwise hole
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.42)'; // subtle darkening
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.40)'; // subtle darkening
       ctx.fill();
       ctx.restore();
     }
@@ -168,20 +209,20 @@ export function renderButtonCanvas(ctx, options) {
       ctx.beginPath();
       ctx.arc(cx, cy, faceRadius, 0, Math.PI * 2);
       ctx.strokeStyle = '#10b981'; // emerald-500
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 6]);
+      ctx.lineWidth = Math.max(1.5, 2 * fontScale);
+      ctx.setLineDash([6 * fontScale, 6 * fontScale]);
       ctx.stroke();
       ctx.restore();
     }
 
-    // Cut line (dashed slate or red line)
+    // Cut line (dashed rose / red line)
     if (showCutGuide) {
       ctx.save();
       ctx.beginPath();
       ctx.arc(cx, cy, cutRadius, 0, Math.PI * 2);
       ctx.strokeStyle = '#f43f5e'; // rose-500
-      ctx.lineWidth = 2;
-      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = Math.max(1.5, 2 * fontScale);
+      ctx.setLineDash([4 * fontScale, 4 * fontScale]);
       ctx.stroke();
       ctx.restore();
     }
@@ -191,7 +232,7 @@ export function renderButtonCanvas(ctx, options) {
   if (is3DPreview) {
     ctx.save();
 
-    // Convex spherical top-left highlight (realistic dome reflection)
+    // Convex spherical top-left highlight
     const glareGradient = ctx.createRadialGradient(
       cx - faceRadius * 0.35,
       cy - faceRadius * 0.35,
@@ -203,7 +244,7 @@ export function renderButtonCanvas(ctx, options) {
     glareGradient.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
     glareGradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.15)');
     glareGradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.0)');
-    glareGradient.addColorStop(1, 'rgba(0, 0, 0, 0.25)'); // bottom edge shadow
+    glareGradient.addColorStop(1, 'rgba(0, 0, 0, 0.25)');
 
     ctx.beginPath();
     ctx.arc(cx, cy, faceRadius, 0, Math.PI * 2);
@@ -268,7 +309,7 @@ function drawCurvedText(ctx, text, cx, cy, radius, options) {
   const centerAngle = (isBottom ? Math.PI / 2 : -Math.PI / 2) + (rotationOffsetDeg * Math.PI) / 180;
 
   let currentAngle = isBottom
-    ? centerAngle + totalAngle / 2 // for bottom arc, traverse clockwise or counter-clockwise
+    ? centerAngle + totalAngle / 2
     : centerAngle - totalAngle / 2;
 
   chars.forEach((char, index) => {
@@ -279,14 +320,10 @@ function drawCurvedText(ctx, text, cx, cy, radius, options) {
     const charCenterAngle = isBottom ? currentAngle - halfCharAngle : currentAngle + halfCharAngle;
 
     ctx.save();
-    // Position at character location on arc
     const charX = cx + radius * Math.cos(charCenterAngle);
     const charY = cy + radius * Math.sin(charCenterAngle);
     ctx.translate(charX, charY);
 
-    // Rotate character tangent to circle:
-    // If top arc: perpendicular to radial line + 90 deg
-    // If bottom arc: perpendicular to radial line - 90 deg so letters stand upright!
     const charRotation = isBottom
       ? charCenterAngle - Math.PI / 2
       : charCenterAngle + Math.PI / 2;

@@ -12,7 +12,7 @@ export function SheetWorkspace({
   onAddPage,
   onDropImage,
   onOpenTextEditor,
-  onOpenImageEditor,
+  onOpenCropModal,
   onDuplicateToAll,
   onClearSlot,
   onQuickUpload,
@@ -130,7 +130,7 @@ export function SheetWorkspace({
                 template={template}
                 onDropImage={onDropImage}
                 onOpenTextEditor={onOpenTextEditor}
-                onOpenImageEditor={onOpenImageEditor}
+                onOpenCropModal={onOpenCropModal}
                 onDuplicateToAll={onDuplicateToAll}
                 onClearSlot={onClearSlot}
                 onQuickUpload={onQuickUpload}
