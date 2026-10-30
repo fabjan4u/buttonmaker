@@ -70,7 +70,7 @@ export function BadgeEditorModal({
     });
   }, [localBadge, template]);
 
-  // Canvas Mouse Dragging Interactions
+  // Canvas Mouse & Touch Dragging Interactions
   const handleMouseDown = (e) => {
     if (!localBadge.image) return;
     setIsDragging(true);
@@ -100,6 +100,37 @@ export function BadgeEditorModal({
   };
 
   const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleTouchStart = (e) => {
+    if (!localBadge.image || !e.touches[0]) return;
+    setIsDragging(true);
+    setDragStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    setInitialPos({ x: localBadge.imageProps.x, y: localBadge.imageProps.y });
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging || !localBadge.image || !e.touches[0]) return;
+    const dx = e.touches[0].clientX - dragStart.x;
+    const dy = e.touches[0].clientY - dragStart.y;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const displaySize = canvas.clientWidth || 360;
+    const deltaPercentX = (dx / displaySize) * 100;
+    const deltaPercentY = (dy / displaySize) * 100;
+
+    setLocalBadge(prev => ({
+      ...prev,
+      imageProps: {
+        ...prev.imageProps,
+        x: Math.round(initialPos.x + deltaPercentX),
+        y: Math.round(initialPos.y + deltaPercentY)
+      }
+    }));
+  };
+
+  const handleTouchEnd = () => {
     setIsDragging(false);
   };
 
@@ -208,11 +239,11 @@ export function BadgeEditorModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-black/85 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl max-h-[96vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-5 bg-black/85 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-slate-900 border-0 sm:border border-slate-800 rounded-none sm:rounded-2xl w-full max-w-5xl h-full sm:h-auto sm:max-h-[96vh] flex flex-col shadow-2xl overflow-hidden">
         
         {/* Modal Top Bar */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800 bg-slate-950/70">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-slate-800 bg-slate-950/70">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-xs">
               #{slotIndex + 1}
@@ -226,7 +257,7 @@ export function BadgeEditorModal({
                   {template.name}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-slate-400 hidden sm:block">
                 Tekst & boogtekst bewerken, foto schalen, roteren en positioneren
               </p>
             </div>
@@ -241,12 +272,12 @@ export function BadgeEditorModal({
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
           
           {/* LEFT: Live Interactive Canvas + 3D Mini Preview */}
-          <div className="lg:col-span-6 flex flex-col items-center justify-between bg-slate-950/60 rounded-2xl p-4 sm:p-5 border border-slate-800/80">
+          <div className="lg:col-span-6 flex flex-col items-center justify-between bg-slate-950/60 rounded-2xl p-3 sm:p-5 border border-slate-800/80">
             {/* VEVOR Specific Line Guide Explanation */}
-            <div className="w-full flex items-center justify-center gap-2 sm:gap-3 text-[11px] bg-slate-900/90 px-3 py-1.5 rounded-xl border border-slate-800 mb-3 flex-wrap">
+            <div className="w-full flex items-center justify-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] bg-slate-900/90 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-800 mb-2 sm:mb-3 flex-wrap">
               <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
                 <span className="w-2.5 h-0.5 border-t-2 border-dashed border-emerald-400"></span>
                 🟢 Voorkant: {template.faceDiameterMm}mm
@@ -272,8 +303,12 @@ export function BadgeEditorModal({
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchEnd}
                   onWheel={handleWheel}
-                  style={{ width: 'min(360px, 72vw)', height: 'min(360px, 72vw)' }}
+                  style={{ touchAction: 'none', width: 'min(340px, 72vw)', height: 'min(340px, 72vw)' }}
                   className={`block rounded-full ${
                     localBadge.image ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-default'
                   }`}

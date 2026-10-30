@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BadgeSlot } from './BadgeSlot';
 import { calculateSheetGrid } from '../utils/pdfGenerator';
-import { ChevronLeft, ChevronRight, PlusCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, PlusCircle, ZoomIn, ZoomOut } from 'lucide-react';
 
 export function SheetWorkspace({
   paper,
@@ -17,8 +17,10 @@ export function SheetWorkspace({
   onClearSlot,
   onQuickUpload,
   onMoveSlot,
-  onUploadFiles
+  onUploadFiles,
+  onSlotClick
 }) {
+  const [zoomScale, setZoomScale] = useState(1);
   const grid = calculateSheetGrid(paper, template);
   const slotsPerPage = grid.maxButtonsPerPage;
 
@@ -54,8 +56,8 @@ export function SheetWorkspace({
           <span>{template.name} ({template.cutDiameterMm}mm VEVOR stans)</span>
         </div>
 
-        {/* Page Switcher & Stats */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* Page Switcher, Zoom & Stats */}
+        <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap">
           {totalPages > 1 && (
             <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-lg p-0.5">
               <button
@@ -67,7 +69,7 @@ export function SheetWorkspace({
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <span className="font-mono text-emerald-400 text-xs px-1 font-bold">
-                Pagina {safeCurrentPage + 1} / {totalPages}
+                P.{safeCurrentPage + 1}/{totalPages}
               </span>
               <button
                 disabled={safeCurrentPage >= totalPages - 1}
@@ -80,8 +82,29 @@ export function SheetWorkspace({
             </div>
           )}
 
-          <span className="bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-full text-emerald-400 font-mono font-semibold">
-            {activeCount} buttons ingevuld
+          {/* Mobile/Desktop Sheet Zoom */}
+          <div className="flex items-center gap-0.5 bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+            <button
+              onClick={() => setZoomScale(z => Math.max(0.75, Number((z - 0.25).toFixed(2))))}
+              className="p-1 rounded text-slate-400 hover:text-white transition"
+              title="Uitzoomen"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <span className="font-mono text-slate-300 text-[10px] px-1 font-semibold">
+              {Math.round(zoomScale * 100)}%
+            </span>
+            <button
+              onClick={() => setZoomScale(z => Math.min(2.0, Number((z + 0.25).toFixed(2))))}
+              className="p-1 rounded text-slate-400 hover:text-white transition"
+              title="Inzoomen"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <span className="bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-full text-emerald-400 font-mono font-semibold text-[11px] sm:text-xs">
+            {activeCount} buttons
           </span>
 
           <button
@@ -97,12 +120,12 @@ export function SheetWorkspace({
 
       {/* The Printable Paper Sheet Mockup (True Aspect Ratio) */}
       <div
-        className="bg-white text-slate-800 rounded-xl shadow-2xl p-5 sm:p-8 md:p-10 border border-slate-300 relative flex flex-col justify-between transition-all"
+        className="bg-white text-slate-800 rounded-xl shadow-2xl p-3 sm:p-6 md:p-8 border border-slate-300 relative flex flex-col justify-between transition-all"
         style={{
-          width: '100%',
-          maxWidth: '780px',
+          width: `${zoomScale * 100}%`,
+          maxWidth: zoomScale === 1 ? '780px' : 'none',
           aspectRatio: `${paper.widthMm} / ${paper.heightMm}`,
-          minHeight: '620px'
+          minHeight: 'auto'
         }}
       >
         {/* Top Sheet Header Information */}
@@ -147,6 +170,7 @@ export function SheetWorkspace({
                 onClearSlot={onClearSlot}
                 onQuickUpload={onQuickUpload}
                 onMoveSlot={onMoveSlot}
+                onSlotClick={onSlotClick}
               />
             );
           })}

@@ -12,7 +12,8 @@ export function BadgeSlot({
   onDuplicateToAll,
   onClearSlot,
   onQuickUpload,
-  onMoveSlot
+  onMoveSlot,
+  onSlotClick
 }) {
   const canvasRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -20,6 +21,16 @@ export function BadgeSlot({
 
   // Exact physical ratio for VEVOR press (e.g. 32mm / 44mm = 72.7%)
   const faceRatioPercent = Math.round((template.faceDiameterMm / template.cutDiameterMm) * 100);
+
+  const handleClick = () => {
+    if (onSlotClick) {
+      onSlotClick(index);
+    } else if (badge) {
+      onOpenTextEditor(index);
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
 
   // Render canvas thumbnail when badge state changes
   useEffect(() => {
@@ -107,7 +118,7 @@ export function BadgeSlot({
           onDragStart={(e) => {
             e.dataTransfer.setData('text/slotIndex', index.toString());
           }}
-          onClick={() => onOpenTextEditor(index)}
+          onClick={handleClick}
           className="relative w-full h-full rounded-full shadow-md overflow-hidden bg-white cursor-pointer transition hover:ring-2 hover:ring-emerald-400"
           title="Klik om te bewerken • Sleep om te verplaatsen naar een andere cirkel"
         >
@@ -173,7 +184,7 @@ export function BadgeSlot({
       ) : (
         /* Empty Badge Slot (Placeholder) */
         <div
-          onClick={() => fileInputRef.current?.click()}
+          onClick={handleClick}
           className="w-full h-full rounded-full border-2 border-dashed border-rose-400/80 hover:border-emerald-500 bg-slate-50/90 hover:bg-emerald-50/40 flex flex-col items-center justify-center text-center p-1.5 cursor-pointer transition-all shadow-inner group/empty"
           title={`Snijlijn: ${template.cutDiameterMm}mm (rood) • Voorkant: ${template.faceDiameterMm}mm (groen)`}
         >

@@ -47,18 +47,18 @@ export function Navbar({
   };
 
   return (
-    <header className="bg-slate-900/95 backdrop-blur border-b border-slate-800 sticky top-0 z-40 px-4 py-2.5">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 flex-wrap">
+    <header className="bg-slate-900/95 backdrop-blur border-b border-slate-800 sticky top-0 z-40 px-3 sm:px-4 py-2 sm:py-2.5">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-3">
         
         {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-black text-xl border-2 border-emerald-300/30">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-black text-base sm:text-xl border-2 border-emerald-300/30 shrink-0">
             B
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-lg text-white tracking-tight">ButtonMaker</span>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="font-bold text-sm sm:text-lg text-white tracking-tight">ButtonMaker</span>
+              <span className="text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hidden xs:inline">
                 100% Gratis
               </span>
             </div>
@@ -69,14 +69,14 @@ export function Navbar({
         </div>
 
         {/* Template & Paper Selectors */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Button Size Selector */}
-          <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1 text-xs">
-            <span className="text-slate-400 mr-2 hidden md:inline">Maat:</span>
+          <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-2 sm:px-2.5 py-1 text-xs">
+            <span className="text-slate-400 mr-1.5 hidden md:inline">Maat:</span>
             <select
               value={template.id}
               onChange={handleTemplateChange}
-              className="bg-transparent text-emerald-400 font-bold focus:outline-none cursor-pointer max-w-[210px] sm:max-w-xs truncate"
+              className="bg-transparent text-emerald-400 font-bold focus:outline-none cursor-pointer max-w-[125px] sm:max-w-xs truncate text-[11px] sm:text-xs"
             >
               {BUTTON_TEMPLATES.map(t => (
                 <option key={t.id} value={t.id} className="bg-slate-900 text-white font-normal">
@@ -92,15 +92,15 @@ export function Navbar({
           </div>
 
           {/* Paper Format Selector */}
-          <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1 text-xs">
-            <span className="text-slate-400 mr-2 hidden md:inline">Papier:</span>
+          <div className="flex items-center bg-slate-950 border border-slate-800 rounded-xl px-2 py-1 text-xs">
+            <span className="text-slate-400 mr-1.5 hidden md:inline">Papier:</span>
             <select
               value={paper.id}
               onChange={(e) => {
                 const found = PAPER_FORMATS.find(p => p.id === e.target.value);
                 if (found) setPaper(found);
               }}
-              className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer"
+              className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer text-[11px] sm:text-xs"
             >
               {PAPER_FORMATS.map(p => (
                 <option key={p.id} value={p.id} className="bg-slate-900 text-white font-normal">
@@ -112,8 +112,8 @@ export function Navbar({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2">
-          {/* Auto fill button */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Auto fill button (Desktop) */}
           <button
             onClick={onAutoFill}
             className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition"
@@ -126,22 +126,25 @@ export function Navbar({
           {/* Reset sheet */}
           <button
             onClick={onResetSheet}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition"
+            className="p-1.5 sm:p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition"
             title="Maak alle cirkels op het blad leeg"
           >
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
 
           {/* Download PDF (PRIMARY CTA) */}
           <button
             onClick={onDownloadPdf}
             disabled={isGenerating || badgesCount === 0}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition active:scale-95"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition active:scale-95 shrink-0"
             title="Download direct de printklare PDF op 100% ware grootte"
           >
-            <Printer className="w-4 h-4" />
-            <span>
+            <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">
               {isGenerating ? 'Bezig met PDF...' : `Download PDF (${badgesCount}/${totalSlots})`}
+            </span>
+            <span className="sm:hidden font-bold">
+              {isGenerating ? '...' : `PDF (${badgesCount})`}
             </span>
           </button>
 
@@ -150,7 +153,7 @@ export function Navbar({
             href="https://github.com/fabjan4u/buttonmaker"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition"
+            className="hidden sm:flex p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition"
             title="Bekijk broncode op GitHub"
           >
             <Github className="w-4 h-4" />

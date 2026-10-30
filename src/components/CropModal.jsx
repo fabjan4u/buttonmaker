@@ -145,56 +145,56 @@ export function CropModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-slate-950/85 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-6 bg-slate-950/85 backdrop-blur-sm animate-fadeIn">
       <div 
-        className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden"
+        className="bg-slate-900 border-0 md:border md:border-slate-700/80 rounded-none md:rounded-2xl w-full max-w-3xl h-full md:h-auto md:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden"
         style={{ '--face-ratio': `${faceRatioPercent}%` }}
       >
         {/* Modal Header */}
-        <div className="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60 flex-wrap gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+        <div className="px-3 sm:px-5 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950/60 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
               <Scissors className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                Afbeelding Aanpassen in Pin
-                <span className="text-[11px] font-mono text-emerald-400 font-normal bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+              <h2 className="text-sm font-bold text-white flex items-center gap-1.5 flex-wrap">
+                Afbeelding Aanpassen
+                <span className="text-[10px] sm:text-[11px] font-mono text-emerald-400 font-normal bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
                   Button #{slotIndex + 1}
                 </span>
               </h2>
-              <p className="text-[11px] text-slate-400">
-                Sleep en zoom de foto zodat deze perfect in de pin past.
+              <p className="text-[10px] sm:text-[11px] text-slate-400">
+                Sleep en zoom de foto passend in de cirkel
               </p>
             </div>
           </div>
 
           {/* Mode Selector Toggle */}
-          <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 p-1 rounded-xl text-xs">
+          <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 p-0.5 sm:p-1 rounded-xl text-xs">
             <button
               onClick={() => setCropTarget('face')}
-              className={`px-3 py-1 rounded-lg font-bold transition flex items-center gap-1.5 ${
+              className={`px-2 sm:px-3 py-1 rounded-lg font-bold transition flex items-center gap-1 text-[11px] sm:text-xs ${
                 cropTarget === 'face'
                   ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
               title={`Foto passend maken op het zichtbare oppervlak van ${template.faceDiameterMm} mm`}
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-300"></span>
-              <span>Groene Lijn ({template.faceDiameterMm} mm)</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-300 shrink-0"></span>
+              <span>Groene Lijn ({template.faceDiameterMm}mm)</span>
             </button>
 
             <button
               onClick={() => setCropTarget('bleed')}
-              className={`px-3 py-1 rounded-lg font-semibold transition flex items-center gap-1.5 ${
+              className={`px-2 sm:px-3 py-1 rounded-lg font-semibold transition flex items-center gap-1 text-[11px] sm:text-xs ${
                 cropTarget === 'bleed'
                   ? 'bg-rose-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
               title={`Foto vullend maken inclusief stansrand van ${template.cutDiameterMm} mm`}
             >
-              <span className="w-2 h-2 rounded-full bg-rose-300"></span>
-              <span>Rode Lijn ({template.cutDiameterMm} mm)</span>
+              <span className="w-2 h-2 rounded-full bg-rose-300 shrink-0"></span>
+              <span>Rode Lijn ({template.cutDiameterMm}mm)</span>
             </button>
           </div>
 

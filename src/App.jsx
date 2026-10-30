@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { UploadsSidebar } from './components/UploadsSidebar';
 import { SheetWorkspace } from './components/SheetWorkspace';
@@ -6,6 +6,19 @@ import { BadgeEditorModal } from './components/BadgeEditorModal';
 import { CropModal } from './components/CropModal';
 import { BUTTON_TEMPLATES, PAPER_FORMATS } from './constants/templates';
 import { calculateSheetGrid, generatePrintPdf } from './utils/pdfGenerator';
+import { 
+  FileText, 
+  Images, 
+  Zap, 
+  Printer, 
+  Scissors, 
+  Type, 
+  Copy, 
+  Trash2, 
+  X, 
+  Plus, 
+  Upload 
+} from 'lucide-react';
 
 export default function App() {
   const [template, setTemplate] = useState(BUTTON_TEMPLATES[0]); // 32mm VEVOR JM-32 default
@@ -17,6 +30,9 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [toastMessage, setToastMessage] = useState(null);
+  const [mobileTab, setMobileTab] = useState('sheet'); // 'sheet' | 'uploads'
+  const [activeMobileSlot, setActiveMobileSlot] = useState(null); // number | null
+  const mobileFileInputRef = useRef(null);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -330,6 +346,39 @@ export default function App() {
     showToast('✓ Alle lege cirkels gevuld!');
   };
 
+  // Place a photo from gallery onto a specific slot or next available slot
+  const handlePlaceGalleryPhoto = (imgItem, targetSlot = null) => {
+    setBadges(prev => {
+      const updated = [...prev];
+      if (typeof targetSlot === 'number') {
+        updated[targetSlot] = createBadgeFromImage(imgItem.imgElement, imgItem.name);
+        showToast(`✓ Foto geplaatst op button #${targetSlot + 1}`);
+      } else {
+        const emptyIdx = updated.findIndex(b => b === null);
+        if (emptyIdx !== -1) {
+          updated[emptyIdx] = createBadgeFromImage(imgItem.imgElement, imgItem.name);
+          showToast(`✓ Foto geplaatst op button #${emptyIdx + 1}`);
+        } else {
+          updated.push(createBadgeFromImage(imgItem.imgElement, imgItem.name));
+          showToast('✓ Extra button toegevoegd en gevuld!');
+        }
+      }
+      return updated;
+    });
+    setActiveMobileSlot(null);
+  };
+
+  // Slot click / tap handler (Mobile drawer vs Desktop text editor)
+  const handleSlotClick = (slotIndex) => {
+    if (window.innerWidth < 1024) {
+      setActiveMobileSlot(slotIndex);
+    } else {
+      if (badges[slotIndex]) {
+        setEditingSlotIndex(slotIndex);
+      }
+    }
+  };
+
   // Duplicate a specific slot to ALL other slots
   const handleDuplicateToAll = (sourceIndex) => {
     const sourceBadge = badges[sourceIndex];
@@ -492,42 +541,258 @@ export default function App() {
         totalSlots={badges.length}
       />
 
-      {/* Main Badgermaker Workspace (Left Uploads Gallery + Center Sheet) */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
-        <UploadsSidebar
-          uploadedImages={uploadedImages}
-          onUploadFiles={handleUploadFiles}
-          onDeleteUploadedImage={(id) => setUploadedImages(prev => prev.filter(i => i.id !== id))}
-          onCropImage={(item) => setGalleryCropItem(item)}
-          onClearAllUploads={() => setUploadedImages([])}
-          onAutoFillSheet={handleAutoFillSheet}
-          onClearSheet={() => setBadges(Array(slotsPerPage).fill(null))}
-          template={template}
-        />
+      {/* Hidden File Input for Mobile Slot Photo Picker */}
+      <input
+        type="file"
+        ref={mobileFileInputRef}
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => {
+          if (e.target.files?.[0] && activeMobileSlot !== null) {
+            handleQuickUpload(activeMobileSlot, e.target.files[0]);
+            setActiveMobileSlot(null);
+          }
+        }}
+      />
 
-        <SheetWorkspace
-          paper={paper}
-          template={template}
-          badges={badges}
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          onAddPage={handleAddPage}
-          onDropImage={handleDropImage}
-          onOpenTextEditor={(idx) => setEditingSlotIndex(idx)}
-          onOpenCropModal={(idx) => {
-            if (!badges[idx] || !badges[idx].image) {
-              showToast('ℹ️ Upload of sleep eerst een foto naar deze button om hem bij te snijden');
-              return;
-            }
-            setCroppingSlotIndex(idx);
-          }}
-          onDuplicateToAll={handleDuplicateToAll}
-          onClearSlot={handleClearSlot}
-          onQuickUpload={handleQuickUpload}
-          onMoveSlot={handleMoveSlot}
-          onUploadFiles={handleUploadFiles}
-        />
+      {/* Main Badgermaker Workspace (Desktop: Side-by-side | Mobile: Fullscreen Active Tab) */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
+        {/* Left Uploads Gallery */}
+        <div className={`h-full ${mobileTab === 'uploads' ? 'flex flex-1' : 'hidden'} lg:flex lg:w-80`}>
+          <UploadsSidebar
+            uploadedImages={uploadedImages}
+            onUploadFiles={handleUploadFiles}
+            onDeleteUploadedImage={(id) => setUploadedImages(prev => prev.filter(i => i.id !== id))}
+            onCropImage={(item) => setGalleryCropItem(item)}
+            onClearAllUploads={() => setUploadedImages([])}
+            onAutoFillSheet={handleAutoFillSheet}
+            onClearSheet={() => setBadges(Array(slotsPerPage).fill(null))}
+            template={template}
+            onPlacePhoto={(item) => {
+              handlePlaceGalleryPhoto(item);
+              if (window.innerWidth < 1024) setMobileTab('sheet');
+            }}
+            onSwitchToSheet={() => setMobileTab('sheet')}
+          />
+        </div>
+
+        {/* Center / Right Sheet Workspace */}
+        <div className={`h-full ${mobileTab === 'sheet' ? 'flex flex-1' : 'hidden'} lg:flex lg:flex-1 overflow-hidden`}>
+          <SheetWorkspace
+            paper={paper}
+            template={template}
+            badges={badges}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            onAddPage={handleAddPage}
+            onDropImage={handleDropImage}
+            onOpenTextEditor={(idx) => setEditingSlotIndex(idx)}
+            onOpenCropModal={(idx) => {
+              if (!badges[idx] || !badges[idx].image) {
+                showToast('ℹ️ Upload of sleep eerst een foto naar deze button om hem bij te snijden');
+                return;
+              }
+              setCroppingSlotIndex(idx);
+            }}
+            onDuplicateToAll={handleDuplicateToAll}
+            onClearSlot={handleClearSlot}
+            onQuickUpload={handleQuickUpload}
+            onMoveSlot={handleMoveSlot}
+            onUploadFiles={handleUploadFiles}
+            onSlotClick={handleSlotClick}
+          />
+        </div>
       </div>
+
+      {/* Mobile Bottom Navigation Bar (< lg) */}
+      <nav className="lg:hidden bg-slate-950/95 backdrop-blur border-t border-slate-800 px-3 py-1.5 flex items-center justify-around z-30 shrink-0">
+        <button
+          onClick={() => setMobileTab('sheet')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition ${
+            mobileTab === 'sheet'
+              ? 'text-emerald-400 font-bold bg-emerald-500/10'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <div className="relative">
+            <FileText className="w-5 h-5" />
+            <span className="absolute -top-1 -right-2 text-[9px] font-mono bg-emerald-500 text-slate-950 font-black px-1 rounded-full">
+              {badges.filter(Boolean).length}
+            </span>
+          </div>
+          <span className="text-[10px]">Afdrukvel</span>
+        </button>
+
+        <button
+          onClick={() => setMobileTab('uploads')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition ${
+            mobileTab === 'uploads'
+              ? 'text-emerald-400 font-bold bg-emerald-500/10'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <div className="relative">
+            <Images className="w-5 h-5" />
+            {uploadedImages.length > 0 && (
+              <span className="absolute -top-1 -right-2 text-[9px] font-mono bg-emerald-500 text-slate-950 font-black px-1 rounded-full">
+                {uploadedImages.length}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px]">Foto's</span>
+        </button>
+
+        <button
+          onClick={handleAutoFillSheet}
+          className="flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-slate-400 hover:text-emerald-400 transition"
+        >
+          <Zap className="w-5 h-5 text-amber-400" />
+          <span className="text-[10px]">Auto-vul</span>
+        </button>
+
+        <button
+          onClick={handleDownloadPdf}
+          disabled={isGenerating || badges.filter(Boolean).length === 0}
+          className="flex flex-col items-center gap-1 py-1 px-3 rounded-xl text-emerald-400 font-bold disabled:opacity-40 transition"
+        >
+          <Printer className="w-5 h-5" />
+          <span className="text-[10px]">PDF</span>
+        </button>
+      </nav>
+
+      {/* Mobile Slot Action Drawer / Bottom Sheet (< lg) */}
+      {activeMobileSlot !== null && (
+        <div 
+          onClick={() => setActiveMobileSlot(null)}
+          className="lg:hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end justify-center animate-fadeIn"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full bg-slate-900 border-t border-slate-700/80 rounded-t-3xl p-5 shadow-2xl max-h-[85vh] overflow-y-auto"
+          >
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+              <div className="flex items-center gap-2">
+                <span className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-400 font-bold text-xs flex items-center justify-center font-mono">
+                  #{activeMobileSlot + 1}
+                </span>
+                <h3 className="font-bold text-white text-sm">
+                  {badges[activeMobileSlot] ? `Button #${activeMobileSlot + 1} Beheren` : `Button #${activeMobileSlot + 1} Vullen`}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setActiveMobileSlot(null)}
+                className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* If slot already has a badge */}
+            {badges[activeMobileSlot] ? (
+              <div className="space-y-2.5">
+                <button
+                  onClick={() => {
+                    const idx = activeMobileSlot;
+                    setActiveMobileSlot(null);
+                    setCroppingSlotIndex(idx);
+                  }}
+                  className="w-full p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs flex items-center gap-3 border border-slate-700 shadow-sm transition active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
+                    <Scissors className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-sm">Foto Bijsnijden & Zoomen</div>
+                    <div className="text-[11px] text-slate-400">Direct passend maken op de {template.faceDiameterMm} mm groene lijn</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const idx = activeMobileSlot;
+                    setActiveMobileSlot(null);
+                    setEditingSlotIndex(idx);
+                  }}
+                  className="w-full p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs flex items-center gap-3 border border-slate-700 shadow-sm transition active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+                    <Type className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-sm">Tekst & Ontwerp Bewerken</div>
+                    <div className="text-[11px] text-slate-400">Boogtekst, lettertype, kleuren & positie</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    handleDuplicateToAll(activeMobileSlot);
+                    setActiveMobileSlot(null);
+                  }}
+                  className="w-full p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs flex items-center gap-3 border border-slate-700 shadow-sm transition active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0">
+                    <Copy className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-sm">Kopieer naar Álle Knoppen</div>
+                    <div className="text-[11px] text-slate-400">Vul het hele afdrukblad met dit ontwerp</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    handleClearSlot(activeMobileSlot);
+                    setActiveMobileSlot(null);
+                  }}
+                  className="w-full p-3 rounded-2xl bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 font-semibold text-xs flex items-center gap-3 border border-rose-800/40 transition active:scale-95"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center shrink-0">
+                    <Trash2 className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold">Button Leegmaken</div>
+                  </div>
+                </button>
+              </div>
+            ) : (
+              /* If slot is empty: Choose from gallery or upload new / take photo */
+              <div className="space-y-4">
+                {uploadedImages.length > 0 && (
+                  <div>
+                    <p className="text-xs text-slate-400 font-semibold mb-2">
+                      Kies een foto uit je geüploade galerij:
+                    </p>
+                    <div className="grid grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-1">
+                      {uploadedImages.map((imgItem) => (
+                        <div
+                          key={imgItem.id}
+                          onClick={() => handlePlaceGalleryPhoto(imgItem, activeMobileSlot)}
+                          className="relative aspect-square rounded-xl overflow-hidden bg-slate-950 border-2 border-slate-700 hover:border-emerald-500 cursor-pointer active:scale-95 transition"
+                        >
+                          <img src={imgItem.url} alt={imgItem.name} className="w-full h-full object-cover" />
+                          <div className="absolute inset-x-0 bottom-0 bg-black/70 p-1 text-[9px] text-white truncate text-center">
+                            {imgItem.name}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => mobileFileInputRef.current?.click()}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition active:scale-95"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Nieuwe foto kiezen of maken (Camera)</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Text & Image Adjustment Modal (with full Curved Text module) */}
       {editingSlotIndex !== null && badges[editingSlotIndex] && (
