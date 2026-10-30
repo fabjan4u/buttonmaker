@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { renderButtonCanvas } from '../utils/canvasRenderer';
-import { Sparkles, Maximize2 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 export function BadgeMockup({ badgeState }) {
   const canvasRef = useRef(null);

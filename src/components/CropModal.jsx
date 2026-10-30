@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Cropper from 'cropperjs';
 import 'cropperjs/dist/cropper.css';
-import { X, ZoomIn, ZoomOut, RotateCw, Check, Scissors, RotateCcw, Move } from 'lucide-react';
+import { X, RotateCw, Check, Scissors, RotateCcw, Move } from 'lucide-react';
 
 export function CropModal({
   isOpen,
@@ -208,11 +208,24 @@ export function CropModal({
 
         {/* Legend Notice & User Guidance */}
         <div className="px-5 py-2 bg-slate-950/40 border-b border-slate-800 flex items-center justify-between text-[11px] flex-wrap gap-2">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-              <span className="w-3 h-3 rounded-full border-2 border-dashed border-emerald-400 inline-block"></span>
-              <span>Vaste pin cirkel: <strong>{template.faceDiameterMm} mm</strong> (zichtbaar oppervlak)</span>
-            </span>
+          <div className="flex items-center gap-4 flex-wrap">
+            {cropTarget === 'bleed' ? (
+              <>
+                <span className="flex items-center gap-1.5 text-rose-400 font-semibold">
+                  <span className="w-3 h-3 rounded-full border-2 border-dashed border-rose-500 inline-block"></span>
+                  <span>Rode stanslijn: <strong>{template.cutDiameterMm} mm</strong></span>
+                </span>
+                <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                  <span className="w-3 h-3 rounded-full border-2 border-dashed border-emerald-400 inline-block"></span>
+                  <span>Groene zichtlijn: <strong>{template.faceDiameterMm} mm</strong></span>
+                </span>
+              </>
+            ) : (
+              <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                <span className="w-3 h-3 rounded-full border-2 border-dashed border-emerald-400 inline-block"></span>
+                <span>Vaste pincirkel: <strong>{template.faceDiameterMm} mm</strong> (zichtbaar oppervlak)</span>
+              </span>
+            )}
             <span className="flex items-center gap-1.5 text-slate-400">
               <Move className="w-3.5 h-3.5 text-slate-400" />
               <span>Sleep foto om te verschuiven</span>
@@ -224,7 +237,7 @@ export function CropModal({
         </div>
 
         {/* Cropper Container (Pin is FIXED in center, user moves/zooms the image behind it!) */}
-        <div className="flex-1 min-h-[320px] max-h-[54vh] bg-slate-950 relative overflow-hidden flex items-center justify-center p-2">
+        <div className="flex-1 min-h-[240px] sm:min-h-[320px] max-h-[54vh] bg-slate-950 relative overflow-hidden flex items-center justify-center p-2">
           <div className={`w-full h-full max-h-[52vh] relative badge-cropper-wrapper ${cropTarget === 'bleed' ? 'crop-mode-bleed' : 'crop-mode-face'}`}>
             <img
               ref={imageRef}

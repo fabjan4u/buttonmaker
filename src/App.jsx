@@ -147,9 +147,49 @@ export default function App() {
   const handleUploadFiles = (fileList) => {
     if (!fileList || fileList.length === 0) return;
 
-    const files = Array.from(fileList);
+    const files = Array.from(fileList).filter(file => {
+      return file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|svg|bmp)$/i.test(file.name);
+    });
+
+    if (files.length === 0) {
+      showToast('⚠️ Selecteer geldige afbeeldingsbestanden (PNG, JPG, enz.)');
+      return;
+    }
+
     const newImages = [];
     let processed = 0;
+
+    const finishUpload = (images) => {
+      if (images.length === 0) {
+        showToast('⚠️ Er konden geen afbeeldingen worden ingeladen.');
+        return;
+      }
+      setUploadedImages(prev => [...prev, ...images]);
+
+      // Auto-populate empty slots with the newly uploaded images!
+      setBadges(prev => {
+        // Ensure we have enough slots across pages for all uploaded photos
+        const emptyCount = prev.filter(b => b === null).length;
+        let targetBadges = [...prev];
+
+        if (images.length > emptyCount) {
+          const neededExtraSlots = images.length - emptyCount;
+          const extraPages = Math.ceil(neededExtraSlots / slotsPerPage);
+          targetBadges = [...targetBadges, ...Array(extraPages * slotsPerPage).fill(null)];
+        }
+
+        let imgIdx = 0;
+        for (let slot = 0; slot < targetBadges.length; slot++) {
+          if (!targetBadges[slot] && imgIdx < images.length) {
+            targetBadges[slot] = createBadgeFromImage(images[imgIdx].imgElement, images[imgIdx].name);
+            imgIdx++;
+          }
+        }
+        return targetBadges;
+      });
+
+      showToast(`✓ ${images.length} foto's geüpload en op het blad geplaatst!`);
+    };
 
     files.forEach((file, index) => {
       const reader = new FileReader();
@@ -166,34 +206,24 @@ export default function App() {
           processed++;
 
           if (processed === files.length) {
-            setUploadedImages(prev => [...prev, ...newImages]);
-
-            // Auto-populate empty slots with the newly uploaded images!
-            setBadges(prev => {
-              // Ensure we have enough slots across pages for all uploaded photos
-              const emptyCount = prev.filter(b => b === null).length;
-              let targetBadges = [...prev];
-
-              if (newImages.length > emptyCount) {
-                const neededExtraSlots = newImages.length - emptyCount;
-                const extraPages = Math.ceil(neededExtraSlots / slotsPerPage);
-                targetBadges = [...targetBadges, ...Array(extraPages * slotsPerPage).fill(null)];
-              }
-
-              let imgIdx = 0;
-              for (let slot = 0; slot < targetBadges.length; slot++) {
-                if (!targetBadges[slot] && imgIdx < newImages.length) {
-                  targetBadges[slot] = createBadgeFromImage(newImages[imgIdx].imgElement, newImages[imgIdx].name);
-                  imgIdx++;
-                }
-              }
-              return targetBadges;
-            });
-
-            showToast(`✓ ${newImages.length} foto's geüpload en op het blad geplaatst!`);
+            finishUpload(newImages);
+          }
+        };
+        img.onerror = () => {
+          console.warn('Afbeelding kon niet geladen worden:', file.name);
+          processed++;
+          if (processed === files.length) {
+            finishUpload(newImages);
           }
         };
         img.src = e.target.result;
+      };
+      reader.onerror = () => {
+        console.warn('Bestand kon niet gelezen worden:', file.name);
+        processed++;
+        if (processed === files.length) {
+          finishUpload(newImages);
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -228,6 +258,11 @@ export default function App() {
 
   // Quick direct drop of a file onto a slot
   const handleQuickUpload = (slotIndex, file) => {
+    if (!file || (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp|gif|svg|bmp)$/i.test(file.name))) {
+      showToast('⚠️ Sleep een geldige afbeelding naar deze button');
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
@@ -244,8 +279,15 @@ export default function App() {
           updated[slotIndex] = createBadgeFromImage(img, item.name);
           return updated;
         });
+        showToast('✓ Afbeelding geplaatst');
+      };
+      img.onerror = () => {
+        showToast('⚠️ Kon afbeelding niet laden');
       };
       img.src = e.target.result;
+    };
+    reader.onerror = () => {
+      showToast('⚠️ Fout bij inlezen van bestand');
     };
     reader.readAsDataURL(file);
   };
@@ -256,7 +298,10 @@ export default function App() {
       ? uploadedImages.map(u => ({ img: u.imgElement, name: u.name }))
       : badges.filter(Boolean).map(b => ({ img: b.image, name: b.name }));
 
-    if (pool.length === 0) return;
+    if (pool.length === 0) {
+      showToast('ℹ️ Upload eerst afbeeldingen om het blad automatisch te vullen');
+      return;
+    }
 
     setBadges(prev => {
       const updated = [...prev];
@@ -264,11 +309,18 @@ export default function App() {
       for (let i = 0; i < updated.length; i++) {
         if (!updated[i]) {
           const item = pool[poolIdx % pool.length];
-          if (item.img) {
+          if (item && item.img) {
             updated[i] = createBadgeFromImage(item.img, item.name);
           } else {
             const sample = prev.find(Boolean);
-            if (sample) updated[i] = JSON.parse(JSON.stringify(sample));
+            if (sample) {
+              updated[i] = {
+                ...sample,
+                id: 'badge-' + Date.now() + '-' + i,
+                imageProps: { ...sample.imageProps },
+                textLayers: (sample.textLayers || []).map(t => ({ ...t }))
+              };
+            }
           }
           poolIdx++;
         }
@@ -462,11 +514,18 @@ export default function App() {
           onAddPage={handleAddPage}
           onDropImage={handleDropImage}
           onOpenTextEditor={(idx) => setEditingSlotIndex(idx)}
-          onOpenCropModal={(idx) => setCroppingSlotIndex(idx)}
+          onOpenCropModal={(idx) => {
+            if (!badges[idx] || !badges[idx].image) {
+              showToast('ℹ️ Upload of sleep eerst een foto naar deze button om hem bij te snijden');
+              return;
+            }
+            setCroppingSlotIndex(idx);
+          }}
           onDuplicateToAll={handleDuplicateToAll}
           onClearSlot={handleClearSlot}
           onQuickUpload={handleQuickUpload}
           onMoveSlot={handleMoveSlot}
+          onUploadFiles={handleUploadFiles}
         />
       </div>
 

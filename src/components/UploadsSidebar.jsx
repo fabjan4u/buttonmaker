@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Upload, Trash2, Zap, Images, Plus, Info, Scissors } from 'lucide-react';
+import { Upload, Trash2, Zap, Images, Info, Scissors } from 'lucide-react';
 
 export function UploadsSidebar({
   uploadedImages,
@@ -50,7 +50,7 @@ export function UploadsSidebar({
           onClick={() => fileInputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={handleDropFiles}
-          className="border-2 border-dashed border-slate-700 hover:border-emerald-500 bg-slate-900/60 hover:bg-slate-850 rounded-xl p-4 text-center cursor-pointer transition group"
+          className="border-2 border-dashed border-slate-700 hover:border-emerald-500 bg-slate-900/60 hover:bg-slate-800 rounded-xl p-4 text-center cursor-pointer transition group"
         >
           <div className="w-9 h-9 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition">
             <Upload className="w-4 h-4" />
@@ -77,7 +77,7 @@ export function UploadsSidebar({
 
             <button
               onClick={onClearSheet}
-              className="py-2 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-750 text-slate-300 font-medium text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition"
+              className="py-2 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition"
               title="Maak alle cirkels op het vel leeg"
             >
               <span>Maak Vel Leeg</span>

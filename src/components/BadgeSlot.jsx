@@ -118,14 +118,14 @@ export function BadgeSlot({
           />
 
           {/* Badge Number Pill */}
-          <div className="absolute top-1.5 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur text-white text-[9px] font-mono px-1.5 py-0.2 rounded-full pointer-events-none opacity-70 group-hover:opacity-0 transition">
+          <div className="absolute top-1.5 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur text-white text-[9px] font-mono px-1.5 py-0.5 rounded-full pointer-events-none opacity-70 group-hover:opacity-0 transition">
             #{index + 1}
           </div>
 
           {/* Slot Action Controls (Appear on hover) */}
           <div 
             onClick={(e) => e.stopPropagation()} 
-            className="absolute inset-0 bg-slate-950/75 backdrop-blur-xs rounded-full flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200"
+            className="absolute inset-0 bg-slate-950/75 backdrop-blur-sm rounded-full flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200"
           >
             <span className="text-[10px] text-slate-300 font-semibold mb-0.5 pointer-events-none">
               Button #{index + 1}
@@ -182,7 +182,7 @@ export function BadgeSlot({
             style={{ width: `${faceRatioPercent}%`, height: `${faceRatioPercent}%` }}
             className="rounded-full border border-dashed border-emerald-500 flex flex-col items-center justify-center pointer-events-none p-1"
           >
-            <div className="w-6 h-6 rounded-full bg-slate-200 group-hover/empty:bg-emerald-500 group-hover/empty:text-white text-slate-600 flex items-center justify-center transition mb-0.5 shadow-xs">
+            <div className="w-6 h-6 rounded-full bg-slate-200 group-hover/empty:bg-emerald-500 group-hover/empty:text-white text-slate-600 flex items-center justify-center transition mb-0.5 shadow-sm">
               <Plus className="w-3.5 h-3.5" />
             </div>
             <span className="text-[9px] font-bold text-slate-700 group-hover/empty:text-emerald-700 leading-tight">

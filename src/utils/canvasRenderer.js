@@ -97,22 +97,14 @@ export function renderButtonCanvas(ctx, options) {
     const userScale = (rawScale < 0.35 && minDim > 600) ? 1.0 : rawScale;
     const finalScale = coverScale * userScale;
 
-    // Offset: normalized percentage (-50 to +50 percent of diameter)
+    // Offset: percentage of target diameter (-100% to +100%)
     let offsetX = 0;
     let offsetY = 0;
     if (typeof imageProps.x === 'number') {
-      if (Math.abs(imageProps.x) <= 100) {
-        offsetX = (imageProps.x / 100) * targetDiam;
-      } else {
-        offsetX = (imageProps.x / 640) * targetDiam;
-      }
+      offsetX = (imageProps.x / 100) * targetDiam;
     }
     if (typeof imageProps.y === 'number') {
-      if (Math.abs(imageProps.y) <= 100) {
-        offsetY = (imageProps.y / 100) * targetDiam;
-      } else {
-        offsetY = (imageProps.y / 640) * targetDiam;
-      }
+      offsetY = (imageProps.y / 100) * targetDiam;
     }
 
     ctx.translate(cx + offsetX, cy + offsetY);

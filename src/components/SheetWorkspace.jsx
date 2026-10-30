@@ -16,7 +16,8 @@ export function SheetWorkspace({
   onDuplicateToAll,
   onClearSlot,
   onQuickUpload,
-  onMoveSlot
+  onMoveSlot,
+  onUploadFiles
 }) {
   const grid = calculateSheetGrid(paper, template);
   const slotsPerPage = grid.maxButtonsPerPage;
@@ -28,11 +29,22 @@ export function SheetWorkspace({
 
   // Slices badges for the currently visible page
   const pageStartIndex = safeCurrentPage * slotsPerPage;
-  const pageBadges = badges.slice(pageStartIndex, pageStartIndex + slotsPerPage);
   const activeCount = badges.filter(Boolean).length;
 
+  const handleWorkspaceDrop = (e) => {
+    // If dropping files directly from computer onto the workspace
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && onUploadFiles) {
+      e.preventDefault();
+      onUploadFiles(e.dataTransfer.files);
+    }
+  };
+
   return (
-    <main className="flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 flex flex-col items-center justify-start bg-slate-950/80 select-none">
+    <main
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleWorkspaceDrop}
+      className="flex-1 overflow-y-auto p-3 sm:p-6 md:p-8 flex flex-col items-center justify-start bg-slate-950/80 select-none"
+    >
       {/* Top Banner / Bar above sheet */}
       <div className="w-full max-w-4xl flex items-center justify-between mb-3 text-xs text-slate-400 px-2 flex-wrap gap-2">
         <div className="flex items-center gap-2">
@@ -74,7 +86,7 @@ export function SheetWorkspace({
 
           <button
             onClick={onAddPage}
-            className="hidden md:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-800 text-xs transition"
+            className="hidden md:flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs transition"
             title="Voeg een extra leeg vel toe voor meer buttons"
           >
             <PlusCircle className="w-3.5 h-3.5 text-emerald-400" />
@@ -94,13 +106,13 @@ export function SheetWorkspace({
         }}
       >
         {/* Top Sheet Header Information */}
-        <div className="border-b border-slate-200 pb-2 mb-3 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+        <div className="border-b border-slate-200 pb-2 mb-3 flex items-center justify-between text-[11px] text-slate-400 font-mono flex-wrap gap-y-1">
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-700 tracking-wider">BUTTONMAKER</span>
             <span>•</span>
-            <span>{template.name}</span>
+            <span className="truncate max-w-[240px] sm:max-w-md">{template.name}</span>
             {totalPages > 1 && (
-              <span className="bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-bold">
+              <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold">
                 P.{safeCurrentPage + 1}/{totalPages}
               </span>
             )}

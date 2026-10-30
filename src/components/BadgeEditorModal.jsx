@@ -8,15 +8,13 @@ import {
   FlipHorizontal, 
   FlipVertical, 
   Trash2, 
-  Plus, 
   ZoomIn, 
   ZoomOut, 
-  Sparkles, 
   Check, 
-  Copy,
-  Upload,
-  Maximize2,
-  Minimize2
+  Copy, 
+  Upload, 
+  Maximize2, 
+  Minimize2 
 } from 'lucide-react';
 import { renderButtonCanvas } from '../utils/canvasRenderer';
 import { BadgeMockup } from './BadgeMockup';
@@ -163,7 +161,7 @@ export function BadgeEditorModal({
   // Text layer handlers
   const handleAddTextLayer = (style = 'straight') => {
     // Determine sensible default font size based on template (smaller buttons get smaller default text)
-    const baseFontSize = template.faceDiameterMm <= 32 ? 22 : 32;
+    const baseFontSize = template.faceDiameterMm <= 38 ? 22 : 32;
 
     const newLayer = {
       id: Date.now().toString(),
@@ -360,7 +358,7 @@ export function BadgeEditorModal({
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => handleAddTextLayer('straight')}
-                      className="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold text-center transition"
+                      className="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-center transition"
                     >
                       + Recht
                     </button>
@@ -651,7 +649,7 @@ export function BadgeEditorModal({
                               imageProps: { ...prev.imageProps, x: 0, y: 0 }
                             }));
                           }}
-                          className="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold transition"
+                          className="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold transition"
                         >
                           Centreer
                         </button>
@@ -734,7 +732,7 @@ export function BadgeEditorModal({
                                 imageProps: { ...prev.imageProps, rotation: (prev.imageProps.rotation + 90) % 360 }
                               }));
                             }}
-                            className="p-1.5 rounded bg-slate-800 hover:bg-slate-750 text-slate-300"
+                            className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300"
                             title="+90° Draaien"
                           >
                             <RotateCw className="w-3.5 h-3.5" />
@@ -754,7 +752,7 @@ export function BadgeEditorModal({
                           className={`py-1.5 px-3 rounded-lg border flex items-center justify-center gap-1.5 ${
                             localBadge.imageProps.flipX
                               ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-                              : 'bg-slate-800 border-slate-750 text-slate-300'
+                              : 'bg-slate-800 border-slate-700 text-slate-300'
                           }`}
                         >
                           <FlipHorizontal className="w-3.5 h-3.5" />
@@ -771,7 +769,7 @@ export function BadgeEditorModal({
                           className={`py-1.5 px-3 rounded-lg border flex items-center justify-center gap-1.5 ${
                             localBadge.imageProps.flipY
                               ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-                              : 'bg-slate-800 border-slate-750 text-slate-300'
+                              : 'bg-slate-800 border-slate-700 text-slate-300'
                           }`}
                         >
                           <FlipVertical className="w-3.5 h-3.5" />
@@ -829,7 +827,7 @@ export function BadgeEditorModal({
                       className={`py-2 rounded-lg border text-center transition ${
                         localBadge.backgroundType === 'solid'
                           ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-semibold'
-                          : 'bg-slate-800 border-slate-750 text-slate-300'
+                          : 'bg-slate-800 border-slate-700 text-slate-300'
                       }`}
                     >
                       Effen Kleur
@@ -839,7 +837,7 @@ export function BadgeEditorModal({
                       className={`py-2 rounded-lg border text-center transition ${
                         localBadge.backgroundType === 'transparent'
                           ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-semibold'
-                          : 'bg-slate-800 border-slate-750 text-slate-300'
+                          : 'bg-slate-800 border-slate-700 text-slate-300'
                       }`}
                     >
                       Transparant
@@ -882,7 +880,7 @@ export function BadgeEditorModal({
             <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-3 flex-wrap">
               <button
                 onClick={() => onSaveAllSlots(localBadge)}
-                className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition active:scale-95"
+                className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition active:scale-95"
                 title="Pas deze instellingen (bijv. tekst of kleur) toe op álle buttons op het vel"
               >
                 <Copy className="w-3.5 h-3.5 text-emerald-400" />
@@ -892,7 +890,7 @@ export function BadgeEditorModal({
               <div className="flex items-center gap-2">
                 <button
                   onClick={onClose}
-                  className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 font-semibold text-xs transition"
+                  className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition"
                 >
                   Annuleren
                 </button>

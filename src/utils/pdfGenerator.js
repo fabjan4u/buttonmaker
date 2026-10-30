@@ -166,8 +166,14 @@ export async function generatePrintPdf(options) {
     doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
     const pageLabel = totalPages > 1 ? ` (Pagina ${page + 1} van ${totalPages})` : '';
+    const cleanTemplateName = (template.name || '')
+      .replace(/[•\u2022]/g, '|')
+      .replace(/[—–]/g, '-')
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'");
+
     doc.text(
-      `ButtonMaker • Formaat: ${template.name} (Snijmaat: ${template.cutDiameterMm}mm / Gezicht: ${template.faceDiameterMm}mm) • VEVOR Standaard${pageLabel}`,
+      `ButtonMaker | Formaat: ${cleanTemplateName} (Snijmaat: ${template.cutDiameterMm}mm / Gezicht: ${template.faceDiameterMm}mm) | VEVOR Standaard${pageLabel}`,
       paper.marginMm,
       paper.marginMm + 2
     );
@@ -179,7 +185,7 @@ export async function generatePrintPdf(options) {
       doc.setFontSize(7.5);
       doc.setTextColor(100, 100, 100);
       doc.text(
-        '⚠️ Belangrijk: Print op 100% / Schaal: Geen (Actual Size / Do not scale)',
+        'LET OP: Print altijd op 100% / Schaal: Geen (Actual Size / Do not scale)',
         paper.marginMm,
         bottomY - 4
       );
@@ -210,10 +216,11 @@ export function downloadSinglePng(badgeState, template, filename = 'button-desig
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');
+  const safeTemplate = template || badgeState?.template || { faceDiameterMm: 36, cutDiameterMm: 44 };
 
   renderButtonCanvas(ctx, {
     ...badgeState,
-    template,
+    template: safeTemplate,
     width: size,
     height: size,
     showGuides: withCutGuide,

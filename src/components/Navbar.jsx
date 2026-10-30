@@ -1,5 +1,5 @@
 import React from 'react';
-import { Printer, RotateCcw, Github, Zap, Check, ChevronDown } from 'lucide-react';
+import { Printer, RotateCcw, Github, Zap } from 'lucide-react';
 import { BUTTON_TEMPLATES, PAPER_FORMATS } from '../constants/templates';
 
 export function Navbar({
@@ -14,6 +14,38 @@ export function Navbar({
   badgesCount,
   totalSlots
 }) {
+  const handleTemplateChange = (e) => {
+    const val = e.target.value;
+    if (val === 'custom') {
+      const faceStr = window.prompt('Voer de zichtbare diameter van de button in (in millimeters, bijv. 38):', template.faceDiameterMm || 36);
+      if (!faceStr) return;
+      const cutStr = window.prompt('Voer de totale stansmaat / snijdiameter in (in millimeters, bijv. 44):', template.cutDiameterMm || 44);
+      if (!cutStr) return;
+
+      const face = parseFloat(faceStr);
+      const cut = parseFloat(cutStr);
+      if (!isNaN(face) && !isNaN(cut) && face > 10 && cut >= face) {
+        setTemplate({
+          id: 'custom',
+          name: `Aangepast (${face}mm / ${cut}mm)`,
+          category: 'custom',
+          popular: false,
+          faceDiameterMm: face,
+          cutDiameterMm: cut,
+          bleedMm: Number(((cut - face) / 2).toFixed(1)),
+          press: 'Aangepaste maat',
+          description: `${face}mm zichtbaar, ${cut}mm stansmaat.`
+        });
+      } else {
+        alert('Voer geldige afmetingen in (minimaal 10mm en stansmaat groter dan of gelijk aan zichtbare maat).');
+      }
+      return;
+    }
+
+    const found = BUTTON_TEMPLATES.find(t => t.id === val);
+    if (found) setTemplate(found);
+  };
+
   return (
     <header className="bg-slate-900/95 backdrop-blur border-b border-slate-800 sticky top-0 z-40 px-4 py-2.5">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 flex-wrap">
@@ -43,15 +75,12 @@ export function Navbar({
             <span className="text-slate-400 mr-2 hidden md:inline">Maat:</span>
             <select
               value={template.id}
-              onChange={(e) => {
-                const found = BUTTON_TEMPLATES.find(t => t.id === e.target.value);
-                if (found) setTemplate(found);
-              }}
-              className="bg-transparent text-emerald-400 font-bold focus:outline-none cursor-pointer"
+              onChange={handleTemplateChange}
+              className="bg-transparent text-emerald-400 font-bold focus:outline-none cursor-pointer max-w-[210px] sm:max-w-xs truncate"
             >
               {BUTTON_TEMPLATES.map(t => (
                 <option key={t.id} value={t.id} className="bg-slate-900 text-white font-normal">
-                  {t.name}{t.popular ? ' ★ (Populair)' : ''}
+                  {t.name}{t.popular ? ' ★' : ''}
                 </option>
               ))}
             </select>
@@ -87,7 +116,7 @@ export function Navbar({
           {/* Auto fill button */}
           <button
             onClick={onAutoFill}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-semibold transition"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition"
             title="Herhaal aanwezige foto's om alle lege cirkels op het vel op te vullen"
           >
             <Zap className="w-3.5 h-3.5 text-emerald-400" />
@@ -97,7 +126,7 @@ export function Navbar({
           {/* Reset sheet */}
           <button
             onClick={onResetSheet}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700 transition"
+            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition"
             title="Maak alle cirkels op het blad leeg"
           >
             <RotateCcw className="w-4 h-4" />
@@ -121,7 +150,7 @@ export function Navbar({
             href="https://github.com/fabjan4u/buttonmaker"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700 transition"
+            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition"
             title="Bekijk broncode op GitHub"
           >
             <Github className="w-4 h-4" />
