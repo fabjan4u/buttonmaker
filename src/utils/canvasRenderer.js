@@ -2,6 +2,31 @@
  * Canvas Rendering Engine for ButtonMaker
  * Handles high-resolution rendering, layers, curved text, auto cover-crop, and print guides.
  */
+import { generatePixelArtCanvas } from './pixelArt';
+
+// In-memory cache for pixel art canvases to maintain 60 FPS performance during live interaction
+const pixelArtCache = new WeakMap();
+
+function getCachedPixelArt(image, pixelArtConfig) {
+  if (!image || !pixelArtConfig || !pixelArtConfig.enabled) return image;
+
+  const key = `${pixelArtConfig.pixelSize || 8}_${pixelArtConfig.palette || 'original'}_${pixelArtConfig.dither ? 1 : 0}_${pixelArtConfig.showGrid ? 1 : 0}`;
+
+  const cached = pixelArtCache.get(image);
+  if (cached && cached.key === key) {
+    return cached.canvas;
+  }
+
+  const canvas = generatePixelArtCanvas(image, {
+    pixelSize: pixelArtConfig.pixelSize || 8,
+    palette: pixelArtConfig.palette || 'original',
+    dither: !!pixelArtConfig.dither,
+    showGrid: !!pixelArtConfig.showGrid
+  });
+
+  pixelArtCache.set(image, { key, canvas });
+  return canvas;
+}
 
 export function renderButtonCanvas(ctx, options) {
   const {
@@ -79,8 +104,12 @@ export function renderButtonCanvas(ctx, options) {
   if (image && image.complete && image.naturalWidth > 0) {
     ctx.save();
 
-    const imgW = image.naturalWidth;
-    const imgH = image.naturalHeight;
+    const drawSource = (imageProps.pixelArt && imageProps.pixelArt.enabled)
+      ? getCachedPixelArt(image, imageProps.pixelArt)
+      : image;
+
+    const imgW = drawSource.naturalWidth || drawSource.width || image.naturalWidth;
+    const imgH = drawSource.naturalHeight || drawSource.height || image.naturalHeight;
     const minDim = Math.min(imgW, imgH);
     
     // Target diameter:
@@ -122,8 +151,13 @@ export function renderButtonCanvas(ctx, options) {
       ctx.filter = `brightness(${b}%) contrast(${c}%) grayscale(${g}%)`;
     }
 
+    // Preserve crisp pixel edges if pixel art is active
+    if (imageProps.pixelArt && imageProps.pixelArt.enabled) {
+      ctx.imageSmoothingEnabled = false;
+    }
+
     // Draw image centered at origin
-    ctx.drawImage(image, -imgW / 2, -imgH / 2, imgW, imgH);
+    ctx.drawImage(drawSource, -imgW / 2, -imgH / 2, imgW, imgH);
     ctx.restore();
   }
 

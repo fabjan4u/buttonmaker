@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Cropper from 'cropperjs';
 import 'cropperjs/dist/cropper.css';
-import { X, RotateCw, Check, Scissors, RotateCcw, Move } from 'lucide-react';
+import { X, RotateCw, Check, Scissors, RotateCcw, Move, Sparkles, Wand2, Loader2, Undo2 } from 'lucide-react';
+import { removeImageBackground, blobToImage } from '../utils/backgroundRemoval';
 
 export function CropModal({
   isOpen,
@@ -17,6 +18,9 @@ export function CropModal({
   const cropperRef = useRef(null);
   const initialRatioRef = useRef(1);
   const [imageSrc, setImageSrc] = useState('');
+  const [originalSrcBackup, setOriginalSrcBackup] = useState(null);
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+  const [bgStatus, setBgStatus] = useState('');
   const [cropTarget, setCropTarget] = useState('face'); // 'face' = 36mm groene lijn, 'bleed' = 44mm rode lijn
   const [zoomPercent, setZoomPercent] = useState(100);
 
@@ -121,14 +125,44 @@ export function CropModal({
     }
   };
 
+  const handleRemoveBg = async () => {
+    if (!imageSrc || isRemovingBg) return;
+    try {
+      setIsRemovingBg(true);
+      setBgStatus('AI model voorbereiden...');
+      setOriginalSrcBackup(imageSrc);
+
+      const blob = await removeImageBackground(imageSrc, (prog) => {
+        setBgStatus(prog.label || 'Verwerken...');
+      });
+
+      const { dataUrl } = await blobToImage(blob);
+      setImageSrc(dataUrl);
+      setBgStatus('');
+      setIsRemovingBg(false);
+    } catch (err) {
+      console.error('Achtergrond verwijderen mislukt:', err);
+      alert('Achtergrond verwijderen kon niet voltooid worden.');
+      setBgStatus('');
+      setIsRemovingBg(false);
+    }
+  };
+
+  const handleUndoBg = () => {
+    if (!originalSrcBackup) return;
+    setImageSrc(originalSrcBackup);
+    setOriginalSrcBackup(null);
+  };
+
   const handleApply = () => {
     if (!cropperRef.current) return;
 
     // High resolution 1200x1200px export for crisp 300 DPI print quality
+    // Preserves transparency if background was removed!
     const canvas = cropperRef.current.getCroppedCanvas({
       width: 1200,
       height: 1200,
-      fillColor: '#ffffff',
+      fillColor: 'transparent',
       imageSmoothingEnabled: true,
       imageSmoothingQuality: 'high'
     });
@@ -306,21 +340,58 @@ export function CropModal({
         </div>
 
         {/* Modal Action Buttons Footer */}
-        <div className="px-5 py-3 border-t border-slate-800 bg-slate-950/90 flex items-center justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition"
-          >
-            Annuleren
-          </button>
+        <div className="px-3 sm:px-5 py-3 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between gap-2 flex-wrap">
+          {/* AI Background Removal Button */}
+          <div className="flex items-center gap-2">
+            {isRemovingBg ? (
+              <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/30 rounded-xl">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>{bgStatus || 'AI uitsnijden...'}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleRemoveBg}
+                  className="py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition active:scale-95"
+                  title="Verwijder automatisch de achtergrond van deze foto met AI"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span className="hidden xs:inline">Verwijder Achtergrond</span>
+                  <span className="xs:hidden">Weg Achtergrond</span>
+                  <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-indigo-950 text-indigo-300 border border-indigo-400/30">AI</span>
+                </button>
 
-          <button
-            onClick={handleApply}
-            className="py-2 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 flex items-center gap-1.5 transition active:scale-95"
-          >
-            <Check className="w-4 h-4" />
-            <span>Bijsnijden & Toepassen</span>
-          </button>
+                {originalSrcBackup && (
+                  <button
+                    type="button"
+                    onClick={handleUndoBg}
+                    className="py-2 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition"
+                    title="Herstel originele foto"
+                  >
+                    <Undo2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={onClose}
+              className="py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition"
+            >
+              Annuleren
+            </button>
+
+            <button
+              onClick={handleApply}
+              className="py-2 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 flex items-center gap-1.5 transition active:scale-95"
+            >
+              <Check className="w-4 h-4" />
+              <span>Bijsnijden & Toepassen</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

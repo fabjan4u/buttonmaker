@@ -14,11 +14,18 @@ import {
   Copy, 
   Upload, 
   Maximize2, 
-  Minimize2 
+  Minimize2,
+  Sparkles,
+  Wand2,
+  Gamepad2,
+  Undo2,
+  Loader2
 } from 'lucide-react';
 import { renderButtonCanvas } from '../utils/canvasRenderer';
 import { BadgeMockup } from './BadgeMockup';
 import { GOOGLE_FONTS } from '../constants/templates';
+import { removeImageBackground, blobToImage } from '../utils/backgroundRemoval';
+import { PIXEL_PALETTES } from '../utils/pixelArt';
 
 export function BadgeEditorModal({
   isOpen,
@@ -36,6 +43,12 @@ export function BadgeEditorModal({
   const [activeTab, setActiveTab] = useState(initialTab); // 'text', 'image', 'background'
   const canvasRef = useRef(null);
   const replaceFileInputRef = useRef(null);
+
+  // Background removal & Pixel Art states
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+  const [bgRemovalStatus, setBgRemovalStatus] = useState('');
+  const [bgRemovalPercent, setBgRemovalPercent] = useState(0);
+  const [originalImageBackup, setOriginalImageBackup] = useState(null);
 
   // Mouse dragging state for canvas
   const [isDragging, setIsDragging] = useState(false);
@@ -187,6 +200,116 @@ export function BadgeEditorModal({
       img.src = e.target.result;
     };
     reader.readAsDataURL(file);
+  };
+
+  // AI Background Removal Handler
+  const handleRemoveBackground = async () => {
+    if (!localBadge.image || isRemovingBg) return;
+    try {
+      setIsRemovingBg(true);
+      setBgRemovalStatus('AI model downloaden...');
+      setBgRemovalPercent(10);
+
+      // Save backup of original image to allow full undo
+      setOriginalImageBackup({
+        image: localBadge.image,
+        imageProps: { ...localBadge.imageProps }
+      });
+
+      const blob = await removeImageBackground(localBadge.image.src, (prog) => {
+        setBgRemovalStatus(prog.label || 'Verwerken...');
+        setBgRemovalPercent(prog.percent || 0);
+      });
+
+      const { img } = await blobToImage(blob);
+
+      setLocalBadge(prev => {
+        // If solid plain white, switch to slate-900 so cutout immediately pops against the badge
+        const nextBg = (prev.backgroundColor === '#ffffff' && prev.backgroundType === 'solid')
+          ? '#0f172a'
+          : prev.backgroundColor;
+
+        return {
+          ...prev,
+          image: img,
+          backgroundColor: nextBg,
+          imageProps: {
+            ...prev.imageProps,
+            hasRemovedBg: true
+          }
+        };
+      });
+
+      setBgRemovalStatus('✓ Achtergrond verwijderd!');
+      setTimeout(() => {
+        setIsRemovingBg(false);
+        setBgRemovalStatus('');
+      }, 1200);
+    } catch (err) {
+      console.error('Achtergrond verwijderen mislukt:', err);
+      alert('Achtergrond verwijderen kon niet voltooid worden. Controleer of uw browser WebAssembly toestaat en of u verbonden bent met internet.');
+      setIsRemovingBg(false);
+      setBgRemovalStatus('');
+    }
+  };
+
+  const handleUndoBackgroundRemoval = () => {
+    if (!originalImageBackup) return;
+    setLocalBadge(prev => ({
+      ...prev,
+      image: originalImageBackup.image,
+      imageProps: {
+        ...prev.imageProps,
+        hasRemovedBg: false
+      }
+    }));
+    setOriginalImageBackup(null);
+  };
+
+  // Pixel Art Handlers
+  const pixelArtConfig = localBadge.imageProps?.pixelArt || {
+    enabled: false,
+    pixelSize: 8,
+    palette: 'original',
+    dither: false,
+    showGrid: false
+  };
+
+  const handleTogglePixelArt = (enabled) => {
+    setLocalBadge(prev => ({
+      ...prev,
+      imageProps: {
+        ...prev.imageProps,
+        pixelArt: {
+          ...(prev.imageProps.pixelArt || {
+            pixelSize: 8,
+            palette: 'original',
+            dither: false,
+            showGrid: false
+          }),
+          enabled
+        }
+      }
+    }));
+  };
+
+  const handleUpdatePixelArt = (updates) => {
+    setLocalBadge(prev => ({
+      ...prev,
+      imageProps: {
+        ...prev.imageProps,
+        pixelArt: {
+          ...(prev.imageProps.pixelArt || {
+            enabled: true,
+            pixelSize: 8,
+            palette: 'original',
+            dither: false,
+            showGrid: false
+          }),
+          ...updates
+        }
+      }
+    }));
   };
 
   // Text layer handlers
@@ -360,7 +483,10 @@ export function BadgeEditorModal({
                 }`}
               >
                 <Scissors className="w-3.5 h-3.5" />
-                <span>Afbeelding & Positie</span>
+                <span>Foto & Pixel Art</span>
+                {(pixelArtConfig?.enabled || localBadge.imageProps?.hasRemovedBg) && (
+                  <span className="w-2 h-2 rounded-full bg-amber-400" title="Effecten actief" />
+                )}
               </button>
 
               <button
@@ -810,6 +936,190 @@ export function BadgeEditorModal({
                           <FlipVertical className="w-3.5 h-3.5" />
                           <span>Spiegel Vert.</span>
                         </button>
+                      </div>
+
+                      {/* ================= AI ACHTERGROND VERWIJDEREN ================= */}
+                      <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-950/40 via-purple-950/25 to-slate-900 border border-indigo-500/30 space-y-2.5 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                              <Wand2 className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
+                                Automatische Achtergrond Verwijdering
+                                <span className="text-[9px] font-mono uppercase bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded font-bold border border-indigo-500/30">
+                                  AI
+                                </span>
+                              </h4>
+                              <p className="text-[10px] text-slate-400">
+                                Vrijstaand maken • 100% lokaal in je browser
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {isRemovingBg ? (
+                          <div className="bg-slate-950/80 rounded-xl p-3 border border-indigo-500/30 space-y-2">
+                            <div className="flex items-center justify-between text-xs text-indigo-300 font-semibold">
+                              <span className="flex items-center gap-1.5">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                                <span>{bgRemovalStatus || 'AI bezig met uitsnijden...'}</span>
+                              </span>
+                              <span className="font-mono">{bgRemovalPercent}%</span>
+                            </div>
+                            <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300 rounded-full"
+                                style={{ width: `${Math.max(5, bgRemovalPercent)}%` }}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={handleRemoveBackground}
+                              className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition active:scale-95"
+                              title="Verwijdert automatisch de achtergrond van de foto met in-browser AI"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                              <span>{localBadge.imageProps?.hasRemovedBg ? 'Achtergrond Opnieuw Uitsnijden' : 'Verwijder Achtergrond (AI)'}</span>
+                            </button>
+
+                            {originalImageBackup && (
+                              <button
+                                onClick={handleUndoBackgroundRemoval}
+                                className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition"
+                                title="Herstel de originele foto met achtergrond"
+                              >
+                                <Undo2 className="w-3.5 h-3.5" />
+                                <span>Herstel</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        <p className="text-[10px] text-slate-400 italic">
+                          💡 Tip: Kies daarna in het tabblad &lsquo;Achtergrond&rsquo; een mooie buttonkleur of verloop!
+                        </p>
+                      </div>
+
+                      {/* ================= THE MAD BADGERS PIXEL ART CONVERTER ================= */}
+                      <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-950/30 via-slate-900 to-slate-950 border border-emerald-500/30 space-y-3 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                              <Gamepad2 className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
+                                Pixel Art Converter
+                                <span className="text-[9px] font-mono uppercase bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-bold border border-emerald-500/30">
+                                  Retro 8-Bit
+                                </span>
+                              </h4>
+                              <p className="text-[10px] text-slate-400">
+                                Naar The Mad Badgers stijl • Blokken & retro paletten
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Master Enable/Disable Toggle */}
+                          <button
+                            onClick={() => handleTogglePixelArt(!pixelArtConfig.enabled)}
+                            className={`px-3 py-1 rounded-full text-xs font-bold transition flex items-center gap-1.5 ${
+                              pixelArtConfig.enabled
+                                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/30'
+                                : 'bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700'
+                            }`}
+                          >
+                            <span className={`w-2 h-2 rounded-full ${pixelArtConfig.enabled ? 'bg-slate-950 animate-pulse' : 'bg-slate-500'}`} />
+                            <span>{pixelArtConfig.enabled ? 'AAN' : 'UIT'}</span>
+                          </button>
+                        </div>
+
+                        {pixelArtConfig.enabled && (
+                          <div className="space-y-3 pt-2 border-t border-slate-800 animate-fadeIn">
+                            {/* Pixel Size Slider */}
+                            <div>
+                              <div className="flex justify-between mb-1 text-[11px]">
+                                <span className="text-slate-300 font-semibold">Pixel Blokgrootte:</span>
+                                <span className="font-mono text-emerald-400 font-bold">
+                                  {pixelArtConfig.pixelSize || 8}px ({pixelArtConfig.pixelSize <= 6 ? 'Fijn' : pixelArtConfig.pixelSize <= 14 ? 'Klassiek' : 'Grof 8-bit'})
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min="3"
+                                max="28"
+                                step="1"
+                                value={pixelArtConfig.pixelSize || 8}
+                                onChange={e => handleUpdatePixelArt({ pixelSize: parseInt(e.target.value, 10) })}
+                                className="w-full accent-emerald-500"
+                              />
+                            </div>
+
+                            {/* Retro Palettes Grid */}
+                            <div>
+                              <span className="text-[11px] text-slate-300 font-semibold block mb-1.5">
+                                Kleurenpalet:
+                              </span>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {PIXEL_PALETTES.map(p => (
+                                  <button
+                                    key={p.id}
+                                    onClick={() => handleUpdatePixelArt({ palette: p.id })}
+                                    className={`p-2 rounded-xl text-left border transition text-xs flex flex-col gap-0.5 ${
+                                      (pixelArtConfig.palette || 'original') === p.id
+                                        ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-bold'
+                                        : 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:bg-slate-800'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span>{p.name}</span>
+                                      {p.colors && (
+                                        <div className="flex -space-x-1">
+                                          {p.colors.slice(0, 4).map((c, idx) => (
+                                            <span 
+                                              key={idx} 
+                                              className="w-2.5 h-2.5 rounded-full border border-black/40" 
+                                              style={{ backgroundColor: `rgb(${c[0]},${c[1]},${c[2]})` }}
+                                            />
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <span className="text-[9px] text-slate-400 font-normal leading-tight">
+                                      {p.description}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Dithering & Grid Options */}
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                              <label className="flex items-center gap-2 p-2 rounded-xl bg-slate-800/60 border border-slate-700/60 cursor-pointer hover:bg-slate-800 text-[11px] text-slate-300">
+                                <input
+                                  type="checkbox"
+                                  checked={!!pixelArtConfig.dither}
+                                  onChange={e => handleUpdatePixelArt({ dither: e.target.checked })}
+                                  className="rounded accent-emerald-500"
+                                />
+                                <span>Bayer Dither (Schaduw)</span>
+                              </label>
+
+                              <label className="flex items-center gap-2 p-2 rounded-xl bg-slate-800/60 border border-slate-700/60 cursor-pointer hover:bg-slate-800 text-[11px] text-slate-300">
+                                <input
+                                  type="checkbox"
+                                  checked={!!pixelArtConfig.showGrid}
+                                  onChange={e => handleUpdatePixelArt({ showGrid: e.target.checked })}
+                                  className="rounded accent-emerald-500"
+                                />
+                                <span>Pixel Rasterlijnen</span>
+                              </label>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Replace / Remove Image Actions */}

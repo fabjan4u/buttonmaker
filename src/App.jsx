@@ -17,8 +17,12 @@ import {
   Trash2, 
   X, 
   Plus, 
-  Upload 
+  Upload,
+  Sparkles,
+  Wand2,
+  Gamepad2
 } from 'lucide-react';
+import { removeImageBackground, blobToImage } from './utils/backgroundRemoval';
 
 export default function App() {
   const [template, setTemplate] = useState(BUTTON_TEMPLATES[0]); // 32mm VEVOR JM-32 default
@@ -368,6 +372,40 @@ export default function App() {
     setActiveMobileSlot(null);
   };
 
+  // AI Background removal for a gallery image
+  const handleRemoveBgForGalleryImage = async (imgItem) => {
+    try {
+      showToast('⏳ AI model laden & achtergrond uitsnijden...');
+      const blob = await removeImageBackground(imgItem.url);
+      const { img, dataUrl } = await blobToImage(blob);
+
+      setUploadedImages(prev => prev.map(u => {
+        if (u.id === imgItem.id) {
+          return { ...u, url: dataUrl, imgElement: img };
+        }
+        return u;
+      }));
+
+      // Update any slots on the sheet currently using this image
+      setBadges(prev => prev.map(b => {
+        if (b && b.image && b.image.src === imgItem.url) {
+          return {
+            ...b,
+            image: img,
+            backgroundColor: b.backgroundColor === '#ffffff' ? '#0f172a' : b.backgroundColor,
+            imageProps: { ...b.imageProps, hasRemovedBg: true }
+          };
+        }
+        return b;
+      }));
+
+      showToast('✓ Achtergrond verwijderd uit galerijfoto!');
+    } catch (err) {
+      console.error(err);
+      showToast('⚠️ Achtergrond verwijderen mislukt');
+    }
+  };
+
   // Slot click / tap handler (Mobile drawer vs Desktop text editor)
   const handleSlotClick = (slotIndex) => {
     if (window.innerWidth < 1024) {
@@ -573,6 +611,7 @@ export default function App() {
               if (window.innerWidth < 1024) setMobileTab('sheet');
             }}
             onSwitchToSheet={() => setMobileTab('sheet')}
+            onRemoveBgForImage={handleRemoveBgForGalleryImage}
           />
         </div>
 
@@ -709,6 +748,48 @@ export default function App() {
                 </button>
 
                 <button
+                  onClick={async () => {
+                    const idx = activeMobileSlot;
+                    const badge = badges[idx];
+                    if (!badge || !badge.image) return;
+                    setActiveMobileSlot(null);
+                    try {
+                      showToast('⏳ AI bezig met achtergrond verwijderen...');
+                      const blob = await removeImageBackground(badge.image.src);
+                      const { img } = await blobToImage(blob);
+                      setBadges(prev => {
+                        const next = [...prev];
+                        if (next[idx]) {
+                          next[idx] = {
+                            ...next[idx],
+                            image: img,
+                            backgroundColor: next[idx].backgroundColor === '#ffffff' ? '#0f172a' : next[idx].backgroundColor,
+                            imageProps: { ...next[idx].imageProps, hasRemovedBg: true }
+                          };
+                        }
+                        return next;
+                      });
+                      showToast('✓ Achtergrond verwijderd!');
+                    } catch (e) {
+                      console.error(e);
+                      showToast('⚠️ Achtergrond verwijderen mislukt');
+                    }
+                  }}
+                  className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-indigo-950/60 to-purple-950/60 hover:from-indigo-900/60 hover:to-purple-900/60 text-white font-semibold text-xs flex items-center gap-3 border border-indigo-500/40 shadow-sm transition active:scale-95"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-5 h-5 text-amber-300" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold text-sm flex items-center gap-1.5">
+                      Achtergrond Verwijderen
+                      <span className="text-[9px] bg-indigo-500/30 text-indigo-300 font-bold px-1.5 py-0.2 rounded border border-indigo-400/30">AI</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400">Maak het onderwerp vrijstaand</div>
+                  </div>
+                </button>
+
+                <button
                   onClick={() => {
                     const idx = activeMobileSlot;
                     setActiveMobileSlot(null);
@@ -720,8 +801,8 @@ export default function App() {
                     <Type className="w-5 h-5" />
                   </div>
                   <div className="text-left">
-                    <div className="font-bold text-sm">Tekst & Ontwerp Bewerken</div>
-                    <div className="text-[11px] text-slate-400">Boogtekst, lettertype, kleuren & positie</div>
+                    <div className="font-bold text-sm">Tekst & Pixel Art Bewerken</div>
+                    <div className="text-[11px] text-slate-400">Retro 8-bit, boogtekst, kleuren & positie</div>
                   </div>
                 </button>
 

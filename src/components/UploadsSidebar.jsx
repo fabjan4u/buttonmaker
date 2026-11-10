@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Upload, Trash2, Zap, Images, Info, Scissors } from 'lucide-react';
+import { Upload, Trash2, Zap, Images, Info, Scissors, Sparkles } from 'lucide-react';
 
 export function UploadsSidebar({
   uploadedImages,
@@ -11,7 +11,8 @@ export function UploadsSidebar({
   onClearSheet,
   template,
   onPlacePhoto,
-  onSwitchToSheet
+  onSwitchToSheet,
+  onRemoveBgForImage
 }) {
   const fileInputRef = useRef(null);
 
@@ -145,6 +146,19 @@ export function UploadsSidebar({
 
                 {/* Action buttons (Visible on touch & hover) */}
                 <div className="absolute top-1.5 right-1.5 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition">
+                  {onRemoveBgForImage && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveBgForImage(imgItem);
+                      }}
+                      className="w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-black/70 hover:bg-indigo-600 text-indigo-300 hover:text-white flex items-center justify-center transition shadow"
+                      title="Achtergrond automatisch verwijderen (AI)"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-amber-300" />
+                    </button>
+                  )}
+
                   {onCropImage && (
                     <button
                       onClick={(e) => {
