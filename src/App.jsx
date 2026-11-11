@@ -402,7 +402,7 @@ export default function App() {
       showToast('✓ Achtergrond verwijderd uit galerijfoto!');
     } catch (err) {
       console.error(err);
-      showToast('⚠️ Achtergrond verwijderen mislukt');
+      showToast(`⚠️ Achtergrond mislukt: ${err?.message || 'Fout'}`);
     }
   };
 
@@ -772,7 +772,7 @@ export default function App() {
                       showToast('✓ Achtergrond verwijderd!');
                     } catch (e) {
                       console.error(e);
-                      showToast('⚠️ Achtergrond verwijderen mislukt');
+                      showToast(`⚠️ Achtergrond mislukt: ${e?.message || 'Fout'}`);
                     }
                   }}
                   className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-indigo-950/60 to-purple-950/60 hover:from-indigo-900/60 hover:to-purple-900/60 text-white font-semibold text-xs flex items-center gap-3 border border-indigo-500/40 shadow-sm transition active:scale-95"

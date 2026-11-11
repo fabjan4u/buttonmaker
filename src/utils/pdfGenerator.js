@@ -6,7 +6,7 @@ import { renderButtonCanvas } from './canvasRenderer';
  */
 export function calculateSheetGrid(paper, template, options = {}) {
   const { gapMm = 3, marginMm = 8 } = options;
-  const cutDiam = template.cutDiameterMm;
+  const cutDiam = template?.cutDiameterMm || 44.0;
 
   const availableWidth = paper.widthMm - 2 * marginMm;
   // Reserve 14mm at bottom for calibration bar and metadata
@@ -42,10 +42,17 @@ export function generateHighResBadgeDataUrl(badgeOptions, template, resolutionPx
   canvas.width = resolutionPx;
   canvas.height = resolutionPx;
   const ctx = canvas.getContext('2d');
+  const safeTemplate = template || badgeOptions?.template || {
+    id: '32mm',
+    name: '32 mm (JM-32 • 36 mm Groene Lijn / 44 mm Stans)',
+    faceDiameterMm: 36.0,
+    cutDiameterMm: 44.0,
+    bleedMm: 4.0
+  };
 
   renderButtonCanvas(ctx, {
     ...badgeOptions,
-    template,
+    template: safeTemplate,
     width: resolutionPx,
     height: resolutionPx,
     showGuides: false,
@@ -62,13 +69,21 @@ export function generateHighResBadgeDataUrl(badgeOptions, template, resolutionPx
 export async function generatePrintPdf(options) {
   const {
     paper,
-    template,
+    template: rawTemplate,
     slots = [], // array of badges (can contain null for empty slots)
     drawCutLine = true,
     cutLineStyle = 'dashed',
     drawCenterMark = true,
     includeCalibration = true
   } = options;
+
+  const template = rawTemplate || {
+    id: '32mm',
+    name: '32 mm (JM-32 • 36 mm Groene Lijn / 44 mm Stans)',
+    faceDiameterMm: 36.0,
+    cutDiameterMm: 44.0,
+    bleedMm: 4.0
+  };
 
   const grid = calculateSheetGrid(paper, template);
   const totalSlots = slots.length > 0 ? slots.length : grid.maxButtonsPerPage;

@@ -142,7 +142,8 @@ export function CropModal({
       setIsRemovingBg(false);
     } catch (err) {
       console.error('Achtergrond verwijderen mislukt:', err);
-      alert('Achtergrond verwijderen kon niet voltooid worden.');
+      const msg = err?.message || 'Onbekende fout';
+      alert(`Achtergrond verwijderen kon niet voltooid worden: ${msg}`);
       setBgStatus('');
       setIsRemovingBg(false);
     }

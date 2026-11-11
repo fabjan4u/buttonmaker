@@ -247,7 +247,8 @@ export function BadgeEditorModal({
       }, 1200);
     } catch (err) {
       console.error('Achtergrond verwijderen mislukt:', err);
-      alert('Achtergrond verwijderen kon niet voltooid worden. Controleer of uw browser WebAssembly toestaat en of u verbonden bent met internet.');
+      const msg = err?.message || 'Onbekende fout bij initialisatie';
+      alert(`Achtergrond verwijderen kon niet voltooid worden: ${msg}\n\nTip: Controleer uw internetverbinding voor de eenmalige download van het AI-model.`);
       setIsRemovingBg(false);
       setBgRemovalStatus('');
     }
